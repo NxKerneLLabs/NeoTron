@@ -1,4 +1,4 @@
--- nvim/lua/plugins/navigation.lua
+-- nvim/lua/plugins/telescope.lua
 -- Plugin specifications for Telescope, project management, and code navigation.
 
 return {
@@ -16,13 +16,13 @@ return {
         cond = function() return vim.fn.executable("make") == 1 end, -- Only build if make is available
       },
       "nvim-telescope/telescope-ui-select.nvim", -- For using Telescope as vim.ui.select
-      "nvim-telescope/telescope-file-browser.nvim", -- If you use its file browser features
-      "ahmedkhalf/project.nvim", -- For project-specific Telescope searches (e.g., project files)
-      "folke/which-key.nvim",  -- For registering Telescope keymaps
+      "nvim-telescope/telescope-file-browser.nvim", -- Se usares as suas funcionalidades de browser de ficheiros
+      "ahmedkhalf/project.nvim", -- Para gestão de projetos e pickers de projeto no Telescope
+      -- "folke/which-key.nvim", -- Já não é uma dependência direta aqui para registo de keymaps
     },
     config = function()
       local logger
-      local core_debug_ok, core_debug = pcall(require, "core.debug")
+      local core_debug_ok, core_debug = pcall(require, "core.debug.logger")
       if core_debug_ok and core_debug and core_debug.get_logger then
         logger = core_debug.get_logger("plugins.telescope")
       else
@@ -40,11 +40,9 @@ return {
 
       local actions_ok, actions = pcall(require, "telescope.actions")
       local action_layout_ok, actions_layout = pcall(require, "telescope.actions.layout")
-      -- local themes_ok, themes = pcall(require, "telescope.themes") -- themes.get_dropdown() is used below
 
       if not (actions_ok and action_layout_ok) then
         logger.error("Failed to load Telescope actions or layout modules. Setup might be incomplete. Actions Error: " .. tostring(actions) .. ", Layout Error: " .. tostring(actions_layout))
-        -- Continue if telescope main module loaded, but warn.
       end
 
       local icons_ok, icons_utils = pcall(require, "utils.icons")
@@ -57,7 +55,6 @@ return {
         logger.warn("utils.icons.ui not found for Telescope config. Using default text icons. Error: " .. tostring(icons_utils))
       end
 
-      -- Custom actions (open_in_vscode, open_in_tabs)
       local custom_telescope_actions = {}
       local transform_mod_ok, transform_mod = pcall(require, "telescope.actions.mt")
       if transform_mod_ok and transform_mod then
@@ -84,13 +81,13 @@ return {
               end
               logger.info("Telescope: Opened " .. #multi .. " selections in new tabs.")
             else
-              actions.select_tab(prompt_bufnr) -- select_default will open in current window, select_tab in new tab
+              actions.select_tab(prompt_bufnr)
               logger.info("Telescope: Opened current selection in a new tab.")
             end
           end,
         })
       else
-        logger.warn("telescope.actions.mt (transform_mod) not found. Custom Telescope actions (e.g., open_in_vscode) may not work. Error: " .. tostring(transform_mod))
+        logger.warn("telescope.actions.mt (transform_mod) not found. Custom Telescope actions may not work. Error: " .. tostring(transform_mod))
       end
 
       telescope.setup({
@@ -98,7 +95,7 @@ return {
           prompt_prefix = telescope_icons.prompt,
           selection_caret = telescope_icons.selection,
           multi_icon = telescope_icons.multi,
-          path_display = { "smart" }, -- "truncate", "absolute", "relative", "smart"
+          path_display = { "smart" },
           sorting_strategy = "ascending",
           layout_strategy = "horizontal",
           layout_config = {
@@ -108,18 +105,18 @@ return {
           },
           file_ignore_patterns = { "node_modules", "%.git/", "dist/", "%.lock", "%.o", "%.obj", "%.DS_Store", "%.svg", "%.webp", "%.png", "%.jpeg", "%.jpg", "%.gif" },
           winblend = 0,
-          border = {}, -- Use theme's default border
-          borderchars = { "─", "│", "─", "│", "┌", "┐", "┘", "└" }, -- Fallback if theme doesn't provide
+          border = {},
+          borderchars = { "─", "│", "─", "│", "┌", "┐", "┘", "└" },
           color_devicons = true,
           set_env = { ["COLORTERM"] = "truecolor" },
-          selection_strategy = "reset", -- "reset", "follow", "row"
+          selection_strategy = "reset",
           mappings = {
             i = {
               ["<C-c>"] = actions and actions.close or function() logger.warn("Actions not loaded for close") end,
               ["<esc>"] = actions and actions.close or function() logger.warn("Actions not loaded for close") end,
               ["<C-j>"] = actions and actions.move_selection_next or function() logger.warn("Actions not loaded for move_selection_next") end,
               ["<C-k>"] = actions and actions.move_selection_previous or function() logger.warn("Actions not loaded for move_selection_previous") end,
-              ["<C-q>"] = actions and function() actions.smart_send_to_qflist(prompt_bufnr); actions.open_qflist(prompt_bufnr) end or function() logger.warn("Actions not loaded for qflist") end,
+              ["<C-q>"] = actions and function(prompt_bufnr) actions.smart_send_to_qflist(prompt_bufnr); actions.open_qflist(prompt_bufnr) end or function() logger.warn("Actions not loaded for qflist") end,
               ["<C-s>"] = actions and actions.select_horizontal or function() logger.warn("Actions not loaded for select_horizontal") end,
               ["<C-v>"] = actions and actions.select_vertical or function() logger.warn("Actions not loaded for select_vertical") end,
               ["<C-t>"] = custom_telescope_actions.open_in_tabs or function() logger.warn("Custom action open_in_tabs not loaded.") end,
@@ -127,14 +124,13 @@ return {
               ["<C-d>"] = actions and actions.preview_scrolling_down or function() logger.warn("Actions not loaded for preview_scrolling_down") end,
               ["<C-p>"] = action_layout_ok and actions_layout.toggle_preview or function() logger.warn("Action layout not loaded for toggle_preview") end,
               ["<C-/>"] = actions and actions.which_key or function() logger.warn("Actions not loaded for which_key") end,
-              -- ["<C-w>"] = function() vim.api.nvim_input("<c-s-w>") end, -- This seems like a custom mapping, ensure it's intended
             },
-            n = { -- Normal mode mappings for Telescope window
+            n = {
               ["q"] = actions and actions.close or function() logger.warn("Actions not loaded for close") end,
               ["<esc>"] = actions and actions.close or function() logger.warn("Actions not loaded for close") end,
               ["<C-j>"] = actions and actions.move_selection_next or function() logger.warn("Actions not loaded for move_selection_next") end,
               ["<C-k>"] = actions and actions.move_selection_previous or function() logger.warn("Actions not loaded for move_selection_previous") end,
-              ["<C-q>"] = actions and function() actions.smart_send_to_qflist(prompt_bufnr); actions.open_qflist(prompt_bufnr) end or function() logger.warn("Actions not loaded for qflist") end,
+              ["<C-q>"] = actions and function(prompt_bufnr) actions.smart_send_to_qflist(prompt_bufnr); actions.open_qflist(prompt_bufnr) end or function() logger.warn("Actions not loaded for qflist") end,
               ["<C-t>"] = custom_telescope_actions.open_in_tabs or function() logger.warn("Custom action open_in_tabs not loaded.") end,
               ["<C-p>"] = action_layout_ok and actions_layout.toggle_preview or function() logger.warn("Action layout not loaded for toggle_preview") end,
               ["?"] = actions and actions.which_key or function() logger.warn("Actions not loaded for which_key") end,
@@ -146,8 +142,6 @@ return {
             hidden = true,
             previewer = true,
             find_command = { "rg", "--files", "--hidden", "--no-ignore-vcs", "-g", "!{.git,node_modules,dist,target,build}/" },
-            -- For systems without rg, you might need a fallback or ensure rg is a dependency.
-            -- theme = "dropdown", -- Example: use a specific theme for this picker
           },
           live_grep = {
             additional_args = function() return { "--hidden", "--no-ignore-vcs", "-g", "!{.git,node_modules,dist,target,build}/" } end,
@@ -161,28 +155,23 @@ return {
             },
           },
           git_files = { show_untracked = true },
-          -- Configure other pickers as needed
         },
         extensions = {
           fzf = {
             fuzzy = true, override_generic_sorter = true, override_file_sorter = true, case_mode = "smart_case",
           },
           ["ui-select"] = (pcall(require, "telescope.themes") and require("telescope.themes").get_dropdown({})) or {},
-          -- file_browser = { hijack_netrw = true, path = "%:p:h", grouped = true },
-          project = {
-            base_dirs = {
-              "~/projects", -- Add your project directories
-              "~/workspace",
-            },
-            hidden_files = true,
-            sync_with_nvim_tree = true, -- If you use nvim-tree
-          }
+          -- A configuração da extensão "project_nvim" (de ahmedkhalf/project.nvim) é feita
+          -- pelo próprio plugin project.nvim quando ele se regista no Telescope.
+          -- Não é necessário configurar "project_nvim" aqui dentro de extensions,
+          -- apenas garantir que é carregado abaixo com telescope.load_extension("project_nvim").
         },
       })
       logger.debug("telescope.setup() completed.")
 
       -- Load enabled extensions
-      local extensions_to_load = { "fzf", "ui-select", "project" } -- "file_browser"
+      -- Alterado "project" para "project_nvim"
+      local extensions_to_load = { "fzf", "ui-select", "project_nvim" } -- "file_browser"
       for _, ext_name in ipairs(extensions_to_load) do
         local load_ok, load_err = pcall(telescope.load_extension, ext_name)
         if load_ok then
@@ -192,20 +181,11 @@ return {
         end
       end
 
-      -- Register Telescope keymaps with which-key
-      local wk_ok, wk = pcall(require, "which-key")
-      if wk_ok and wk then
-        local telescope_keymaps_module_ok, telescope_keymaps_module = pcall(require, "keymaps.which-key.telescope")
-        if telescope_keymaps_module_ok and telescope_keymaps_module and type(telescope_keymaps_module.register) == "function" then
-          local keymap_logger = (core_debug_ok and core_debug.get_logger) and core_debug.get_logger("keymaps.which-key.telescope") or logger
-          telescope_keymaps_module.register(wk, keymap_logger) -- Pass logger
-          logger.info("Telescope keymaps successfully registered with which-key.")
-        else
-          logger.warn("Failed to load or register Telescope keymaps from 'keymaps.which-key.telescope'. Error or module structure issue: " .. tostring(telescope_keymaps_module))
-        end
-      else
-        logger.warn("'which-key' module not available when configuring Telescope. Keymaps skipped. Error: " .. tostring(wk))
-      end
+      -- REMOVIDO: Bloco de registo de keymaps do Telescope com which-key.
+      -- Esta responsabilidade foi movida para o orquestrador de keymaps (lua/keymaps/init.lua)
+      -- e para o ficheiro de definição (lua/keymaps/definitions/telescope.lua).
+      -- logger.info("Telescope keymap registration with which-key will be handled by the central keymap orchestrator.")
+
       logger.info("nvim-telescope/telescope.nvim configured successfully.")
     end,
   },
@@ -215,16 +195,16 @@ return {
   -- ╰──────────────────────────────────────────────────────────╯
   {
     "ahmedkhalf/project.nvim",
-    event = "VeryLazy", -- Or load on specific events like "BufWinEnter"
-    -- cmd = "ProjectRoot", -- Example command if you want to trigger loading
+    event = "VeryLazy",
     config = function()
       local logger_proj
-      local core_debug_ok_proj, core_debug_proj = pcall(require, "core.debug")
+      -- Corrigido: Usar core.debug.logger consistentemente
+      local core_debug_ok_proj, core_debug_proj = pcall(require, "core.debug.logger")
       if core_debug_ok_proj and core_debug_proj and core_debug_proj.get_logger then
         logger_proj = core_debug_proj.get_logger("plugins.project")
       else
-        logger_proj = { info = function(m) print("INFO [ProjP_FB]: " .. m) end, error = function(m) print("ERROR [ProjP_FB]: " .. m) end, warn = function(m) print("WARN [ProjP_FB]: " .. m) end }
-        logger_proj.error("core.debug.get_logger not found for project.nvim config.")
+        logger_proj = { info = function(m) print("INFO [ProjP_FB]: " .. m) end, error = function(m) print("ERROR [ProjP_FB]: " .. m) end, warn = function(m) print("WARN [ProjP_FB]: " .. m) end, debug = function(m) print("DEBUG [ProjP_FB]: " .. m) end }
+        logger_proj.error("core.debug.logger not found for project.nvim config.")
       end
 
       logger_proj.info("Configuring ahmedkhalf/project.nvim...")
@@ -235,17 +215,27 @@ return {
       end
 
       project.setup({
-        manual_mode = false, -- true if you want to manually manage projects
-        detection_methods = { "lsp", "pattern" }, -- "lsp" uses LSP root_dir, "pattern" looks for files/dirs
+        manual_mode = false,
+        detection_methods = { "lsp", "pattern" },
         patterns = { ".git", "_darcs", ".hg", ".bzr", ".svn", "Makefile", "package.json", "Cargo.toml", "setup.py", "pyproject.toml", "go.mod" },
-        ignore_lsp = {}, -- List of LSPs to ignore for project detection
-        exclude_dirs = { vim.fn.stdpath("config") }, -- Don't treat nvim config as a project
-        show_hidden = false, -- Show hidden projects in Telescope picker
-        silent_chdir = true, -- Change directory without messages
-        scope_chdir = "global", -- "global", "tab", "win"
-        datapath = vim.fn.stdpath("data") .. "/project_nvim", -- Where project data is stored
+        ignore_lsp = {},
+        exclude_dirs = { vim.fn.stdpath("config") },
+        show_hidden = false,
+        silent_chdir = true,
+        scope_chdir = "global",
+        datapath = vim.fn.stdpath("data") .. "/project_nvim",
       })
       logger_proj.info("project.nvim configured.")
+
+      -- Opcional: Carregar a extensão do Telescope aqui se não foi feito acima,
+      -- ou se project.nvim precisar ser configurado antes que o Telescope tente carregar sua extensão.
+      -- No entanto, a abordagem de carregar em `telescope.config` é geralmente preferida se
+      -- `project.nvim` já estiver disponível como dependência.
+      -- Se houver problemas de timing, pode ser necessário garantir que `project.nvim`
+      -- complete o seu setup e registe a sua extensão ANTES que `telescope.load_extension("project_nvim")` seja chamado.
+      -- Uma forma de garantir isso é se o Telescope tiver `project.nvim` como `dependencies` e
+      -- `project.nvim` for configurado com `lazy = false` ou um evento que dispare antes do Telescope.
+      -- Mas, na maioria dos casos, a ordem atual com `project.nvim` como dependência do Telescope deve funcionar.
     end,
   },
 
@@ -255,19 +245,19 @@ return {
   {
     "SmiteshP/nvim-navic",
     dependencies = { "neovim/nvim-lspconfig", "nvim-tree/nvim-web-devicons" },
-    lazy = true, -- Can be loaded when LspAttach event happens
+    lazy = true,
     init = function()
-      vim.g.navic_silence = true -- Suppress nvim-navic's own messages if desired
-      -- You can set global options for nvim-navic here if needed before its setup
+      vim.g.navic_silence = true
     end,
     config = function()
       local logger_navic
-      local core_debug_ok_navic, core_debug_navic = pcall(require, "core.debug")
+      -- Corrigido: Usar core.debug.logger consistentemente
+      local core_debug_ok_navic, core_debug_navic = pcall(require, "core.debug.logger")
       if core_debug_ok_navic and core_debug_navic and core_debug_navic.get_logger then
         logger_navic = core_debug_navic.get_logger("plugins.navic")
       else
-        logger_navic = { info = function(m) print("INFO [NavicP_FB]: " .. m) end, error = function(m) print("ERROR [NavicP_FB]: " .. m) end, warn = function(m) print("WARN [NavicP_FB]: " .. m) end }
-        logger_navic.error("core.debug.get_logger not found for nvim-navic config.")
+        logger_navic = { info = function(m) print("INFO [NavicP_FB]: " .. m) end, error = function(m) print("ERROR [NavicP_FB]: " .. m) end, warn = function(m) print("WARN [NavicP_FB]: " .. m) end, debug = function(m) print("DEBUG [NavicP_FB]: " .. m) end }
+        logger_navic.error("core.debug.logger not found for nvim-navic config.")
       end
 
       logger_navic.info("Configuring SmiteshP/nvim-navic...")
@@ -287,21 +277,19 @@ return {
       end
 
       navic.setup({
-        icons = navic_icons, -- Uses icons from your utils.icons.kinds table
-        highlight = true,    -- Highlight the current symbol in navic
+        icons = navic_icons,
+        highlight = true,
         separator = " > ",
         depth_limit = 5,
         depth_limit_indicator = "..",
         lsp = {
-            auto_attach = true, -- Automatically attach to LSP clients
-            preference = nil,   -- Order of LSP clients to prefer for symbols
+          auto_attach = true,
+          preference = nil,
         }
       })
       logger_navic.info("nvim-navic configured.")
-      -- Note: nvim-navic is typically attached to LSP clients in the on_attach function
-      -- of your nvim-lspconfig setup (as seen in your plugins/lsp.lua).
-      -- This config function here sets up navic's global options.
     end,
   },
 }
+
 

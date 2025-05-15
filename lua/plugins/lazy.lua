@@ -3,7 +3,7 @@
 
 -- Obtain a namespaced logger from core.debug
 local logger
-local core_debug_ok, core_debug = pcall(require, "core.debug")
+local core_debug_ok, core_debug = pcall(require, "core.debug.logger")
 if core_debug_ok and core_debug and core_debug.get_logger then
   logger = core_debug.get_logger("plugins.lazy")
 else
@@ -98,7 +98,7 @@ local lazy_opts = {
   -- Configure logging for lazy.nvim itself
   -- logger = logger, -- You could pass your custom logger, but lazy has its own good one.
   -- For lazy's own debug logs, set `debug = true` (as you have)
-  debug = false, -- Set to true for verbose lazy.nvim output, false for normal use.
+  debug = true, -- Set to true for verbose lazy.nvim output, false for normal use.
 }
 
 -- List of modules in 'lua/plugins/' that return plugin specifications.
@@ -110,8 +110,8 @@ local plugin_spec_files = {
   "plugins.cmp",
   "plugins.treesitter",
   "plugins.git",
-  "plugins.navigation",
-  "plugins.explorer",
+  "plugins.telescope",
+  "plugins.nvimtree",
   "plugins.terminal",
   "plugins.dap", -- Renamed from plugins.debug to plugins.dap for clarity if it only contains DAP
                   -- This should ideally be part of plugins.ui or loaded very early

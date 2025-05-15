@@ -231,7 +231,8 @@ M.dap = {
 
 -- Log at the very end, after M is fully populated.
 -- This pcall is fine, but if core.debug itself has issues, this might not show.
-local core_debug_ok, core_debug_module = pcall(require, "core.debug")
+local logger
+local core_debug_ok, core_debug_module = pcall(require, "core.debug.logger")
 if core_debug_ok and core_debug_module and core_debug_module.info then
   core_debug_module.info("utils.icons", "utils.icons module loaded successfully.")
 elseif core_debug_ok and core_debug_module and type(core_debug_module) == "table" and not core_debug_module.info then

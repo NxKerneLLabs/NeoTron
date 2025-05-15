@@ -1,84 +1,73 @@
 -- lua/core/options.lua
 -- Configurações globais do Neovim
-
-local debug = require("core.debug") -- Declarar dependências usadas no módulo
+local logger = require("core.debug.logger")
 local opt = vim.opt
 local g = vim.g
 local fn = vim.fn
 
-debug.info("Carregando opções globais do Neovim (lua/core/options.lua)...")
+logger.info("Carregando opções globais do Neovim (lua/core/options.lua)...")
 
--- Interface e aparência
-opt.number = true          -- Mostra números de linha
-opt.relativenumber = true  -- Números relativos para navegação (controlado também por autocmds)
-opt.cursorline = true      -- Destaca a linha atual do cursor
-opt.termguicolors = true   -- Habilita cores verdadeiras de 24-bit no terminal
-opt.signcolumn = "yes"     -- Sempre mostra a coluna de sinais (para git, lsp, etc.)
-opt.colorcolumn = "80,120" -- Linhas verticais nos limites de 80 e 120 colunas
-opt.showmode = false       -- Não mostra o modo atual (plugins como lualine cuidam disso)
-opt.cmdheight = 1          -- Altura da linha de comando (0 pode ser usado com plugins específicos)
-opt.scrolloff = 10         -- Mantém 10 linhas de contexto ao rolar verticalmente
-opt.sidescrolloff = 8      -- Mantém 8 colunas de contexto ao rolar horizontalmente
-opt.laststatus = 3         -- Sempre mostra a statusline global (para lualine)
+-- Interface e aparência gerenciadas em core/appearance.lua
+require("core.appearance")
 
 -- Comportamento de edição
-opt.tabstop = 2        -- Número de espaços que um <Tab> no arquivo conta como
-opt.softtabstop = 2    -- Número de espaços que um <Tab> insere/remove em modo de edição
-opt.shiftwidth = 2     -- Número de espaços para indentação automática
-opt.expandtab = true   -- Converte <Tab> em espaços
-opt.smartindent = true -- Indentação inteligente para novas linhas
-opt.autoindent = true  -- Copia a indentação da linha atual para a nova linha
-opt.wrap = false       -- Não quebra linhas longas automaticamente
-opt.linebreak = true   -- Quebra linhas em palavras (se 'wrap' estivesse ativo ou para formatação)
-opt.list = true        -- Mostra caracteres invisíveis (configurados em listchars)
-opt.listchars = {      -- Configuração dos caracteres invisíveis
-  tab = "» ",          -- Caractere para tabulação
-  trail = "·",         -- Caractere para espaços no final da linha
-  nbsp = "␣",          -- Caractere para non-breaking space
-  extends = "⟩",       -- Caractere para linhas que continuam além da tela (com wrap desativado)
-  precedes = "⟨",      -- Caractere para linhas que começam antes da tela
-}
-opt.formatoptions:remove({ "c", "r", "o" }) -- Evita comentários automáticos em novas linhas
+opt.tabstop = 2            -- Número de espaços que um <Tab> no arquivo conta como
+opt.softtabstop = 2        -- Número de espaços que um <Tab> insere/remove em modo de edição
+opt.shiftwidth = 2         -- Número de espaços para indentação automática
+opt.expandtab = true       -- Converte <Tab> em espaços
+opt.smartindent = true     -- Indentação inteligente para novas linhas
+opt.autoindent = true      -- Copia a indentação da linha atual para a nova linha
+opt.wrap = false           -- Não quebra linhas longas automaticamente
+opt.linebreak = true       -- Quebra linhas em palavras
 
 -- Busca e substituição
-opt.hlsearch = true    -- Destaca todos os resultados da busca
-opt.incsearch = true   -- Mostra resultados da busca incrementalmente enquanto digita
-opt.ignorecase = true  -- Ignora maiúsculas/minúsculas na busca
-opt.smartcase = true   -- Torna a busca sensível a maiúsculas/minúsculas se houver letras maiúsculas no padrão
+opt.hlsearch = true        -- Destaca todos os resultados da busca
+opt.incsearch = true       -- Busca incremental
+opt.ignorecase = true      -- Ignora maiúsculas/minúsculas na busca
+opt.smartcase = true       -- Sensível a maiúsculas se houver uppercase no padrão
 
 -- Sistema e performance
-opt.hidden = true         -- Permite esconder buffers modificados sem salvar
-opt.errorbells = false    -- Desativa sinos de erro sonoros ou visuais
-opt.swapfile = false      -- Desativa a criação de arquivos de swap (.swp)
-opt.backup = false        -- Desativa a criação de arquivos de backup (~)
-local undodir_path = fn.stdpath("data") .. "/undo"
-opt.undodir = undodir_path -- Diretório para arquivos de undo persistente
-opt.undofile = true       -- Habilita undo persistente entre sessões
+opt.hidden = true          -- Esconde buffers modificados sem salvar
+opt.errorbells = false     -- Desativa sinos de erro
+opt.swapfile = false       -- Desativa arquivos de swap (.swp)
+opt.backup = false         -- Desativa arquivos de backup (~)
 
--- Cria o diretório de undo se não existir
-if not (fn.isdirectory(undodir_path) == 1) then
-  pcall(fn.mkdir, undodir_path, "p", 0700)
-  debug.info("Diretório de undo criado em: " .. undodir_path)
+local undodir = fn.stdpath("data") .. "/undo"
+opt.undodir = undodir     -- Diretório para undo persistente
+opt.undofile = true       -- Ativa undo persistente
+
+-- Cria diretório de undo
+if fn.isdirectory(undodir) ~= 1 then
+  pcall(fn.mkdir, undodir, "p", "0700")
+  logger.info("Diretório de undo criado em: " .. undodir)
 end
 
-opt.updatetime = 300   -- Tempo em milissegundos para o evento CursorHold (usado por LSPs, etc.)
-opt.timeoutlen = 500   -- Tempo em milissegundos para esperar por sequências de mapeamento de teclas
-opt.ttimeoutlen = 10   -- Tempo em milissegundos para esperar por códigos de escape de teclas (para <Esc> mais rápido)
+-- Ajuste de formatoptions via autocmd para garantir persistência
+vim.api.nvim_create_autocmd("BufEnter", {
+  pattern = "*",
+  callback = function()
+    vim.opt.formatoptions:remove({ "c", "r", "o" })
+  end,
+  desc = "Remove auto-comment formatoptions c, r, o on buffer enter"
+})
 
--- Janelas e splits
-opt.splitbelow = true  -- Novos splits horizontais abrem abaixo do atual
-opt.splitright = true  -- Novos splits verticais abrem à direita do atual
+opt.updatetime = 300       -- Atualiza CursorHold a cada 300ms
+opt.timeoutlen = 500       -- Espera de mapeamentos
+opt.ttimeoutlen = 10       -- Espera por escape sequence curto
 
--- Configurações adicionais para plugins e comportamento
-opt.completeopt = "menu,menuone,noselect" -- Opções de autocompletar (bom para nvim-cmp)
-opt.mouse = "a"        -- Habilita o uso do mouse em todos os modos (normal, visual, insert, command)
-opt.clipboard = "unnamedplus" -- Usa o clipboard do sistema para yank/paste (requer xclip/wl-copy/etc.)
-opt.pumheight = 10     -- Altura máxima do menu pop-up de autocompletar
+-- Splits
+opt.splitbelow = true      -- Splits horizontais abrem abaixo
+opt.splitright = true      -- Splits verticais abrem à direita
 
--- Líder global (mapleader) e local (maplocalleader)
--- Definido aqui para garantir que esteja disponível quando os keymaps forem carregados.
-g.mapleader = " "      -- Define <leader> como a tecla Espaço
-g.maplocalleader = "\\" -- Define <localleader> como a tecla Barra Invertida (exemplo)
+-- Configurações adicionais
+opt.completeopt = "menu,menuone,noselect" -- Autocompletar ideal para nvim-cmp
+opt.mouse = "a"           -- Mouse em todos modos
+opt.clipboard = "unnamedplus" -- Usa clipboard do sistema
+opt.pumheight = 10         -- Altura do popup de completions
 
-debug.info("Opções globais do Neovim (lua/core/options.lua) carregadas e configuradas!")
+-- Líder global/local definidos antes de keymaps
+g.mapleader = " "         -- Espaço
+g.maplocalleader = "\\"   -- Barra invertida
+
+logger.info("Opções globais carregadas e configuradas com sucesso.")
 

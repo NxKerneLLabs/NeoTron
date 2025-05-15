@@ -1,5 +1,5 @@
 -- ~/.config/nvim/init.lua
-
+vim.g.python3_host_prog = "/usr/bin/python3"
 -- Defina o nome do arquivo do tema que você quer usar (da pasta lua/themes/)
 vim.g.selected_theme_name = "tokyonight_theme" -- Mude para "catppuccin_theme", "nord_theme", "tokyonight_theme" etc.
 
@@ -11,6 +11,7 @@ if not options_ok then
 end
 
 -- Carregamento do módulo de debug com proteção contra falhas
+local logger
 local debug_ok, debug = pcall(require, "core.debug")
 if not debug_ok then
   vim.notify("Erro ao carregar 'core.debug'. Usando fallback básico para logging.", vim.log.levels.ERROR)
@@ -50,12 +51,17 @@ else
   debug.info("init", "Autocommands carregados com sucesso.")
 end
 
-local keymaps_ok, _ = pcall(require, "core.keymaps")
+local keymaps_ok, _ = pcall(require, "keymaps.init")
 if not keymaps_ok then
   debug.error("init", "Erro ao carregar 'core.keymaps'. Verifique o arquivo.")
 else
   debug.info("init", "Keymaps carregados com sucesso.")
 end
+
+require("utils.forensic")  -- registra os comandos
+-- opcionalmente já habilita:
+-- require("utils.forensic").enable()
+
 
 -- O colorscheme será aplicado pelo arquivo de tema específico.
 -- Não é mais necessário definir vim.cmd.colorscheme aqui, a menos que seja um fallback.

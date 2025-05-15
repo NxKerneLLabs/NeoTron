@@ -2,7 +2,8 @@
 -- Utility functions for nvim-cmp completion plugin
 
 -- Safely require core.debug and nvim-cmp modules
-local debug_ok, debug = pcall(require, "core.debug")
+local logger
+local debug_ok, debug = pcall(require, "core.debug.logger")
 if not debug_ok then
   -- Fallback basic logging if core.debug is not available
   debug = {
