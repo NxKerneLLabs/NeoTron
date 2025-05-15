@@ -1,8 +1,8 @@
 -- nvim/lua/utils/init.lua
 -- Este arquivo serve como o ponto de entrada para o pacote 'utils'.
 -- Ele pode carregar e expor outros módulos dentro do diretório 'utils'.
-
-local debug_ok, debug = pcall(require, "core.debug")
+local logger
+local debug_ok, debug = pcall(require, "core.debug.logger")
 if not debug_ok then
   debug = {
     info = function(msg) vim.notify("UTILS INFO: " .. msg, vim.log.levels.INFO) end,

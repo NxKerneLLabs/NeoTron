@@ -9,7 +9,6 @@ local function initial_notify(msg, level)
 end
 
 -- Module cache for safe_require
-local _mod_cache = {}
 local function safe_require(path)
   if _mod_cache[path] then
     return _mod_cache[path].ok, _mod_cache[path].mod
@@ -17,10 +16,21 @@ local function safe_require(path)
   local ok, mod = pcall(require, path)
   if not ok then
     initial_notify("Failed to load " .. path .. ": " .. tostring(mod), vim.log.levels.ERROR)
+  elseif type(mod) ~= "table" then
+    initial_notify("Module " .. path .. " returned " .. type(mod) .. ", expected table", vim.log.levels.ERROR)
   end
   _mod_cache[path] = { ok = ok, mod = mod }
   return ok, mod
 end
+
+-- Around line 24 in core/debug/init.lua
+local profiler_ok, profiler = safe_require("core.debug.profiler")
+if not profiler_ok or type(profiler) ~= "table" then
+  profiler_ok = true
+  profiler = { profile = function(func) return func end } -- Dummy profiler
+  initial_notify("Profiler module invalid, using fallback", vim.log.levels.WARN)
+end
+
 
 -- Load core debug modules
 local config_ok, config       = safe_require("core.debug.config")
@@ -66,7 +76,7 @@ M.track_events   = (events_ok and events.track_events) or function() M.warn("Eve
 -- Initialize event tracking
 function M.init_events()
   if M.config.enabled and events_ok then
-    M.info("core.debug.init", "Tracking global events...")
+    M.info("core.debug", "Tracking global events...")
     M.track_events(nil, "global")
   elseif not M.config.enabled then
     initial_notify("Event tracking disabled via config.", vim.log.levels.INFO)
@@ -76,7 +86,7 @@ function M.init_events()
 end
 
 -- Bootstrap
-M.info("core.debug.init", "Debug system initialization start.")
+M.info("core.debug", "Debug system initialization start.")
 M.init_events()
 
 return M

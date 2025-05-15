@@ -1,63 +1,63 @@
 -- ~/.config/nvim/init.lua
+vim.g.python3_host_prog = "/usr/bin/python3"
+vim.g.selected_theme_name = "tokyonight"
+vim.g.mapleader = " "
+vim.g.maplocalleader = "\\"
+vim.g.editorconfig = false
 
--- Defina o nome do arquivo do tema que você quer usar (da pasta lua/themes/)
-vim.g.selected_theme_name = "tokyonight_theme" -- Mude para "catppuccin_theme", "nord_theme", "tokyonight_theme" etc.
-
--- 1. Carregue configurações 'core' super essenciais primeiro
--- Configurações básicas de opções do Neovim
-local options_ok, _ = pcall(require, "core.options")
-if not options_ok then
-  vim.notify("Erro ao carregar 'core.options'. Verifique o arquivo.", vim.log.levels.ERROR)
-end
-
--- Carregamento do módulo de debug com proteção contra falhas
-local debug_ok, debug = pcall(require, "core.debug")
+-- 1. Core debug
+local debug_ok, debug_err = pcall(require, "core.debug")
 if not debug_ok then
-  vim.notify("Erro ao carregar 'core.debug'. Usando fallback básico para logging.", vim.log.levels.ERROR)
-  -- Fallback básico para logging caso core.debug falhe
-  debug = {
-    info = function(ns, msg) vim.notify("[INFO][" .. ns .. "] " .. msg, vim.log.levels.INFO) end,
-    error = function(ns, msg) vim.notify("[ERROR][" .. ns .. "] " .. msg, vim.log.levels.ERROR) end,
-    warn = function(ns, msg) vim.notify("[WARN][" .. ns .. "] " .. msg, vim.log.levels.WARN) end,
-    debug = function(ns, msg) vim.notify("[DEBUG][" .. ns .. "] " .. msg, vim.log.levels.DEBUG) end,
-    wrap_register = function(original, ns, name)
-      return function(mappings, opts)
-        vim.notify("[DEBUG][" .. ns .. "] Usando fallback para " .. name, vim.log.levels.DEBUG)
-        return original(mappings, opts)
-      end
-    end
-  }
-else
-  vim.notify("Módulo 'core.debug' carregado com sucesso.", vim.log.levels.INFO)
+  vim.notify("Erro ao carregar 'core.debug': " .. tostring(debug_err), vim.log.levels.ERROR)
 end
 
--- Notificação inicial usando o debug ou fallback
-debug.info("init", "Neovim core carregando. Inicializando plugins...")
+-- 2. Opções básicas
+local ok, err = pcall(require, "core.options")
+if not ok then
+  vim.notify("Erro ao carregar 'core.options': " .. tostring(err), vim.log.levels.ERROR)
+end
 
--- 2. Chame o seu configurador do lazy.nvim
-local status_ok_lazy, _ = pcall(require, "plugins.lazy")
-if not status_ok_lazy then
-  debug.error("init", "Erro crítico ao carregar o gestor de plugins (plugins.lazy). Verifique os logs.")
+-- 3. Logger
+local logger
+local logger_ok, logger_mod = pcall(require, "core.debug.logger")
+if logger_ok and type(logger_mod.get_logger) == "function" then
+  logger = logger_mod.get_logger("init")
+else
+  logger = {
+    info = function(_, msg) vim.notify("[init] INFO: " .. msg, vim.log.levels.INFO) end,
+    error = function(_, msg) vim.notify("[init] ERROR: " .. msg, vim.log.levels.ERROR) end,
+  }
+end
+
+-- 4. Lazy.nvim
+local plugins_ok, err_plugins = pcall(require, "plugins.lazy")
+if not plugins_ok then
+  logger.error("init", "Erro ao carregar plugins.lazy: " .. tostring(err_plugins))
   return
 end
-debug.info("init", "Gestor de plugins (lazy.nvim) carregado com sucesso.")
+logger.info("init", "lazy.nvim carregado.")
 
--- 3. Carregue autocmds e seu carregador central de keymaps
-local autocmds_ok, _ = pcall(require, "core.autocmds")
+-- 5. Autocmds e keymaps
+local autocmds_ok, err_autocmds = pcall(require, "core.autocmds")
 if not autocmds_ok then
-  debug.error("init", "Erro ao carregar 'core.autocmds'. Verifique o arquivo.")
+  logger.error("init", "Erro ao carregar core.autocmds: " .. tostring(err_autocmds))
 else
-  debug.info("init", "Autocommands carregados com sucesso.")
+  logger.info("init", "Autocmds carregados.")
 end
 
-local keymaps_ok, _ = pcall(require, "core.keymaps")
+local keymaps_ok, err_keymaps = pcall(require, "core.keymaps.init")
 if not keymaps_ok then
-  debug.error("init", "Erro ao carregar 'core.keymaps'. Verifique o arquivo.")
+  logger.error("init", "Erro ao carregar core.keymaps: " .. tostring(err_keymaps))
 else
-  debug.info("init", "Keymaps carregados com sucesso.")
+  logger.info("init", "Keymaps carregados.")
 end
 
--- O colorscheme será aplicado pelo arquivo de tema específico.
--- Não é mais necessário definir vim.cmd.colorscheme aqui, a menos que seja um fallback.
-debug.info("init", "Configuração do Neovim carregada com sucesso!")
+-- 6. Which-key
+local wk_ok, err_wk = pcall(require, "plugins.which-key")
+if not wk_ok then
+  logger.error("init", "Erro ao carregar plugins.which-key: " .. tostring(err_wk))
+else
+  logger.info("init", "Which-key carregado.")
+end
 
+logger.info("init", "Configuração do Neovim concluída com sucesso!")

@@ -7,7 +7,7 @@ local M = {}
 M.ui = {
   Telescope = "🔭",
   Search = "",
-  Grep = "grep", -- Consider using Search icon if a specific Grep icon isn't good
+  Grep = "grep",
   Filter = "",
   Files = "",
   Folder = "",
@@ -18,12 +18,12 @@ M.ui = {
   History = "",
   Clock = "",
   Calendar = "",
-  Project = "", -- Using a generic project/folder icon
+  Project = "",
   Dashboard = "",
   Settings = "",
   Terminal = "",
-  Keyboard = "⌨", -- Simpler keyboard icon
-  List = "", -- Changed to a more common list icon (scissors often mean cut) -> perhaps  or 
+  Keyboard = "⌨",
+  List = "",
   CheckboxChecked = "",
   CheckboxUnchecked = "",
   ArrowRight = "",
@@ -50,11 +50,11 @@ M.ui = {
   Save = "",
   Edit = "",
   View = "",
-  HiddenFile = "", -- Check if this icon renders well, might need an alternative like ".𝒇"
+  HiddenFile = "",
   Refresh = "",
   Sort = "",
   Tree = "",
-  Graph = "📈", -- Simpler graph icon
+  Graph = "📈",
   Table = "",
   Column = "",
   BoldClose = "",
@@ -75,7 +75,7 @@ M.ui = {
   Notification = "",
   Audio = "",
   Pencil = "",
-  FileCode = "代码", -- Example: File with 'code' text if specific icon is not good
+  FileCode = "代码",
   FileImage = "",
   FileArchive = "",
   FileAudio = "",
@@ -85,20 +85,20 @@ M.ui = {
   Line = "│",
   LineDashed = "┊",
   LineCorner = "└",
-  Bug = "", -- Moved Bug here as it's used by M.diagnostics later
+  Bug = "",
 }
 
 -- Git & Version Control Icons
 M.git = {
   Repo = "",
   Branch = "",
-  Commit = "󰑐", -- Different commit icon
+  Commit = "󰑐",
   Tag = "",
   Stash = "󰚫",
   GitSignsAdd = "",
   GitSignsChange = "",
   GitSignsDelete = "",
-  GitSignsTopDelete = "‾", -- This might be too subtle; consider alternative
+  GitSignsTopDelete = "‾",
   GitSignsChangeDelete = "󰍷",
   Diff = "",
   Merge = "",
@@ -106,7 +106,7 @@ M.git = {
   Issue = "",
   Staged = "✓",
   Unstaged = "✗",
-  Untracked = "★", -- Or "?"
+  Untracked = "★",
   Renamed = "➜",
   Deleted = "🗑",
   Ignored = "◌",
@@ -114,47 +114,44 @@ M.git = {
 }
 
 -- LSP & Diagnostics Icons
--- Define M.lsp once
 M.lsp = {
   LSP = "",
-  Definition = M.ui.ArrowRight, -- Re-use from ui
-  Declaration = M.ui.ArrowRight, -- Re-use from ui
+  Definition = M.ui.ArrowRight,
+  Declaration = M.ui.ArrowRight,
   References = "󰌷",
-  Implementation = "IMP", -- Keep as text or find suitable icon
-  TypeDefinition = "𝙏", -- Keep as text or find suitable icon
-  Hover = M.ui.InfoCircle, -- Re-use from ui
+  Implementation = "IMP",
+  TypeDefinition = "𝙏",
+  Hover = M.ui.InfoCircle,
   SignatureHelp = "󰗚",
-  CodeAction = M.ui.Lightbulb, -- Re-use from ui
-  Rename = M.ui.Pencil, -- Re-use from ui
+  CodeAction = M.ui.Lightbulb,
+  Rename = M.ui.Pencil,
   Format = "🎨",
   Server = "󰒋",
   Connected = "󰱒",
-  Disconnected = "Disconnect", -- Text for disconnected
+  Disconnected = "Disconnect",
 }
 
--- Define M.diagnostics once
 M.diagnostics = {
   Error = "",
   Warn = "",
-  Info = M.ui.InfoCircle, -- Re-use from ui
-  Hint = M.ui.Lightbulb, -- Re-use from ui
-  Debug = M.ui.Bug, -- Use the one defined in M.ui
+  Info = M.ui.InfoCircle,
+  Hint = M.ui.Lightbulb,
+  Debug = M.ui.Bug,
   Trace = "✎",
   Question = M.ui.Question,
   Ok = "✓",
-  Location = "📍", -- Location pin
-  Bug = M.ui.Bug, -- Ensure this is consistent
+  Location = "📍",
+  Bug = M.ui.Bug,
 }
-
 
 -- Miscellaneous & Specific Tool Icons
 M.misc = {
   Cmp = "",
   Copilot = "",
-  LSP = M.lsp.LSP, -- Re-use from lsp
-  Bug = M.diagnostics.Bug, -- Re-use from diagnostics
+  LSP = M.lsp.LSP,
+  Bug = M.diagnostics.Bug,
   Help = M.ui.Question,
-  Tag = M.git.Tag, -- Re-use from git
+  Tag = M.git.Tag,
   Tree = M.ui.Tree,
   List = M.ui.List,
   Package = M.ui.Package,
@@ -214,38 +211,29 @@ M.kinds = {
 M.dap = {
   Breakpoint = "●",
   BreakpointCondition = "◆",
-  LogPoint = "◆", -- Consider "L●" or similar if distinct icon needed
+  LogPoint = "◆",
   Stopped = "→",
-  FrameCurrent = M.ui.ArrowRight, -- Current frame indicator
+  FrameCurrent = M.ui.ArrowRight,
   Continue = "▶️",
   StepOver = "↷",
   StepInto = "↴",
   StepOut = "↰",
   Stop = "⏹",
   Repl = "💬",
-  ToggleUI = M.ui.Dashboard, -- Use a generic UI/panel icon
+  ToggleUI = M.ui.Dashboard,
   RunLast = "🔁",
   Expanded = "▾",
   Collapsed = "▸",
 }
 
--- Log at the very end, after M is fully populated.
--- This pcall is fine, but if core.debug itself has issues, this might not show.
-local core_debug_ok, core_debug_module = pcall(require, "core.debug")
-if core_debug_ok and core_debug_module and core_debug_module.info then
-  core_debug_module.info("utils.icons", "utils.icons module loaded successfully.")
-elseif core_debug_ok and core_debug_module and type(core_debug_module) == "table" and not core_debug_module.info then
-   -- This case means core.debug loaded but doesn't have an 'info' function directly.
-   -- It might have a get_logger function.
-   if core_debug_module.get_logger then
-       local logger = core_debug_module.get_logger("utils.icons")
-       logger.info("utils.icons module loaded successfully (via get_logger).")
-   else
-       vim.notify("utils.icons loaded, but core.debug.info or core.debug.get_logger not found.", vim.log.levels.WARN)
-   end
+-- Logger
+local logger
+local logger_ok, logger_mod = pcall(require, "core.debug.logger")
+if logger_ok and logger_mod.get_logger then
+  logger = logger_mod.get_logger("utils.icons")
+  logger.info("utils.icons module loaded successfully.")
 else
-  vim.notify("utils.icons loaded, but core.debug could not be loaded for logging. Error: " .. tostring(core_debug_module), vim.log.levels.WARN)
+  vim.notify("utils.icons loaded, but core.debug.logger failed: " .. tostring(logger_mod), vim.log.levels.WARN)
 end
 
 return M
-

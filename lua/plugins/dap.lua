@@ -7,20 +7,17 @@ return {
   -- ╰──────────────────────────────────────────────────────────╯
   {
     "mfussenegger/nvim-dap",
-    -- Load DAP early if debugging is frequent, or use `cmd` for on-demand loading.
-    -- Consider `ft` (filetype) trigger if you only debug specific languages.
     event = { "BufReadPre", "BufNewFile" },
-    -- cmd = { "DapContinue", "DapToggleBreakpoint", "DapStepOver", "DapStepInto", "DapStepOut", "DapTerminate" },
     dependencies = {
-      "rcarriga/nvim-dap-ui",          -- UI for DAP
-      "theHamsta/nvim-dap-virtual-text", -- Inline virtual text for DAP
-      "nvim-neotest/nvim-nio",         -- Optional, but good for async operations, often a dep for dap-ui or adapters
-      "folke/which-key.nvim",          -- For which-key integration
-      "nvim-tree/nvim-web-devicons",   -- For icons in DAP signs (optional)
+      "rcarriga/nvim-dap-ui",
+      "theHamsta/nvim-dap-virtual-text",
+      "nvim-neotest/nvim-nio",
+      -- "folke/which-key.nvim", -- Removido: which-key é gerido centralmente
+      "nvim-tree/nvim-web-devicons",
     },
     config = function()
       local logger
-      local core_debug_ok, core_debug = pcall(require, "core.debug")
+      local core_debug_ok, core_debug = pcall(require, "core.debug.logger")
       if core_debug_ok and core_debug and core_debug.get_logger then
         logger = core_debug.get_logger("plugins.dap.core")
       else
@@ -36,13 +33,10 @@ return {
         return
       end
 
-      -- Setup DAP UI listeners (dapui will be configured in its own plugin spec)
-      -- It's good practice to pcall require for dapui here as well, as this config runs
-      -- before dapui's own config function might have run.
       local dapui_setup_ok, dapui = pcall(require, "dapui")
       if dapui_setup_ok and dapui then
         dap.listeners.after.event_initialized["dapui_config"] = function()
-          dapui.open({}) -- Pass empty table or specific opts if needed
+          dapui.open({})
           logger.debug("DAP UI opened on event_initialized.")
         end
         dap.listeners.before.event_terminated["dapui_config"] = function()
@@ -57,7 +51,6 @@ return {
         logger.warn("'dapui' module not available when setting up DAP listeners for nvim-dap. UI might not auto-open/close. Error: " .. tostring(dapui))
       end
 
-      -- Define DAP signs using icons
       local icons_ok, icons_utils = pcall(require, "utils.icons")
       local dap_icons = {}
       if icons_ok and icons_utils and icons_utils.dap then
@@ -74,20 +67,10 @@ return {
       vim.fn.sign_define("DapFrame", { text = dap_icons.FrameCurrent or "→F", texthl = "DiagnosticHint", numhl = "DapFrame" })
       logger.debug("DAP signs configured.")
 
-      -- Register DAP keymaps with which-key
-      local wk_ok, wk = pcall(require, "which-key")
-      if wk_ok and wk then
-        local dap_keymaps_module_ok, dap_keymaps_module = pcall(require, "keymaps.which-key.dap")
-        if dap_keymaps_module_ok and dap_keymaps_module and type(dap_keymaps_module.register) == "function" then
-          local keymap_logger = (core_debug_ok and core_debug.get_logger) and core_debug.get_logger("keymaps.which-key.dap") or logger
-          dap_keymaps_module.register(wk, keymap_logger) -- Pass logger
-          logger.info("DAP keymaps successfully registered with which-key.")
-        else
-          logger.warn("Failed to load or register DAP keymaps from 'keymaps.which-key.dap'. Error or module structure issue: " .. tostring(dap_keymaps_module))
-        end
-      else
-        logger.warn("'which-key' module not available. DAP keymaps for which-key skipped. Error: " .. tostring(wk))
-      end
+      -- REMOVIDO: Bloco de registo de keymaps do DAP com which-key.
+      -- Esta responsabilidade foi movida para o orquestrador de keymaps (lua/keymaps/init.lua)
+      -- e para o ficheiro de definição (lua/keymaps/definitions/dap.lua).
+      -- logger.info("DAP keymap registration with which-key will be handled by the central keymap orchestrator.")
 
       logger.info("nvim-dap configured successfully.")
     end,
@@ -99,17 +82,15 @@ return {
   {
     "rcarriga/nvim-dap-ui",
     dependencies = { "mfussenegger/nvim-dap", "nvim-neotest/nvim-nio" },
-    -- No specific event/cmd needed if nvim-dap's listeners handle opening it.
-    -- If you want to manually toggle it without a DAP session active, add a cmd or keys.
-    -- cmd = "DapUiToggle",
     config = function()
       local logger_ui
-      local core_debug_ok_ui, core_debug_ui = pcall(require, "core.debug")
+      -- Corrigido: Usar core.debug.logger consistentemente
+      local core_debug_ok_ui, core_debug_ui = pcall(require, "core.debug.logger")
       if core_debug_ok_ui and core_debug_ui and core_debug_ui.get_logger then
         logger_ui = core_debug_ui.get_logger("plugins.dap.ui")
       else
         logger_ui = { info = function(m) print("INFO [DAPUI_P_FB]: " .. m) end, error = function(m) print("ERROR [DAPUI_P_FB]: " .. m) end, warn = function(m) print("WARN [DAPUI_P_FB]: " .. m) end, debug = function(m) print("DEBUG [DAPUI_P_FB]: " .. m) end }
-        logger_ui.error("core.debug.get_logger not found for nvim-dap-ui config.")
+        logger_ui.error("core.debug.logger not found for nvim-dap-ui config.")
       end
 
       logger_ui.info("Configuring rcarriga/nvim-dap-ui...")
@@ -120,22 +101,22 @@ return {
       end
 
       local icons_ok_ui, icons_utils_ui = pcall(require, "utils.icons")
-      local dap_ui_icons = {}
+      local dap_ui_icons_cfg = {} -- Renomeado para evitar conflito com dap_ui_icons global se existisse
       if icons_ok_ui and icons_utils_ui and icons_utils_ui.dap then
-        dap_ui_icons = icons_utils_ui.dap
-         logger_ui.debug("Custom DAP UI icons loaded from utils.icons.dap.")
+        dap_ui_icons_cfg = icons_utils_ui.dap
+        logger_ui.debug("Custom DAP UI icons loaded from utils.icons.dap.")
       else
         logger_ui.warn("'utils.icons.dap' not found for nvim-dap-ui. Using default icons. Error: " .. tostring(icons_utils_ui))
       end
 
       dapui.setup({
         icons = {
-          expanded = dap_ui_icons.Expanded or "▾",
-          collapsed = dap_ui_icons.Collapsed or "▸",
-          current_frame = dap_ui_icons.FrameCurrent or "",
+          expanded = dap_ui_icons_cfg.Expanded or "▾",
+          collapsed = dap_ui_icons_cfg.Collapsed or "▸",
+          current_frame = dap_ui_icons_cfg.FrameCurrent or "",
         },
         mappings = {
-          expand = { "E", "<CR>" }, -- Added <CR> for expanding
+          expand = { "E", "<CR>" },
           open = "o",
           remove = "d",
           edit = "e",
@@ -143,7 +124,7 @@ return {
           toggle = "t",
         },
         expand_lines = vim.fn.has("nvim-0.7") == 1,
-        layouts = { -- Your original layout configuration
+        layouts = {
           {
             elements = {
               { id = "scopes", size = 0.30 },
@@ -151,12 +132,12 @@ return {
               { id = "stacks", size = 0.25 },
               { id = "watches", size = 0.25 },
             },
-            size = 0.3, -- Adjusted to be a fraction of screen width/height
+            size = 0.3,
             position = "left",
           },
           {
             elements = { { id = "repl", size = 0.5 }, { id = "console", size = 0.5 } },
-            size = 0.2, -- Adjusted to be a fraction of screen height
+            size = 0.2,
             position = "bottom",
           },
         },
@@ -179,7 +160,7 @@ return {
   {
     "theHamsta/nvim-dap-virtual-text",
     dependencies = { "mfussenegger/nvim-dap" },
-    opts = { -- Using 'opts' for simple configuration
+    opts = {
       enabled = true,
       enabled_commands = true,
       highlight_changed_variables = true,
@@ -189,11 +170,11 @@ return {
       only_current_frame = false,
       all_frames_displayed = false,
       virt_text_pos = "eol",
-      virt_text_win_col = nil, -- Let it auto-determine
+      virt_text_win_col = nil,
     },
-    config = function(_, opts_from_lazy) -- opts_from_lazy are the values from the 'opts' table above
+    config = function(_, opts_from_lazy)
       local logger_vt
-      local core_debug_ok_vt, core_debug_vt = pcall(require, "core.debug")
+      local core_debug_ok_vt, core_debug_vt = pcall(require, "core.debug.logger")
       if core_debug_ok_vt and core_debug_vt and core_debug_vt.get_logger then
         logger_vt = core_debug_vt.get_logger("plugins.dap.virtual-text")
       else
@@ -212,4 +193,3 @@ return {
     end,
   },
 }
-

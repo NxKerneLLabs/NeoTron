@@ -1,17 +1,13 @@
--- nvim/lua/core/debug/profiler.lua
--- Tools for profiling performance
-
-local logger = require("core.debug.logger")
-
-local M = {}
-
-function M.profile(func, namespace, name)
-  local func_name = name or "anonymous_function"
-  return function(...)
-    local start_time = vim.loop.hrtime()
-    local results = table.pack(func(...))
-    local duration_ms = (vim.loop.hrtime() - start_time) / 1e6
-    logger.info(namespace, string.format("Function '%s' executed in %.2fms", func_name, duration_ms))
-    return table.unpack(results, 1, results.n)
+local function safe_require(path)
+  if _mod_cache[path] then
+    return _mod_cache[path].ok, _mod_cache[path].mod
   end
+  local ok, mod = pcall(require, path)
+  if not ok then
+    initial_notify("Failed to load " .. path .. ": " .. tostring(mod), vim.log.levels.ERROR)
+  elseif type(mod) ~= "table" then
+    initial_notify("Module " .. path .. " returned " .. type(mod) .. ", expected table", vim.log.levels.ERROR)
+  end
+  _mod_cache[path] = { ok = ok, mod = mod }
+  return ok, mod
 end

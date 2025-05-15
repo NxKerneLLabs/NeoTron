@@ -3,7 +3,7 @@
 
 -- Obtain a namespaced logger from core.debug for this module file itself
 local logger
-local core_debug_ok, core_debug = pcall(require, "core.debug")
+local core_debug_ok, core_debug = pcall(require, "core.debug.logger")
 if core_debug_ok and core_debug and core_debug.get_logger then
   logger = core_debug.get_logger("ui.notify_spec") -- Logger for this spec file
 else
@@ -81,13 +81,6 @@ return {
       -- Override vim.notify to use this plugin
       vim.notify = notify
       plugin_logger.info("nvim-notify configured and vim.notify redirected.")
-
-      -- Test notification (optional)
-      -- vim.defer_fn(function()
-      --   plugin_logger.info("nvim-notify test notification sent via plugin_logger.")
-      --   vim.notify("nvim-notify is working!", vim.log.levels.WARN, { title = "Plugin Test" })
-      -- end, 1000)
-
     end,
   },
 }
