@@ -14,3 +14,4 @@ function M.get_mappings(icons, logger)
 end
 return M
 
+

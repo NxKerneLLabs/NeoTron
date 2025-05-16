@@ -1,7 +1,9 @@
 -- nvim/lua/plugins/cmp.lua
 -- Plugin specifications for nvim-cmp, snippets, and AI assistants.
 
-local function get_fallback_logger(name)
+local fallback = require("core.debug.fallback")
+local ok_dbg, dbg = pcall(require, "core.debug.logger")
+local logger = (ok_dbg and dbg.get_logger and dbg.get_logger("plugins.cmp")) or fallback
   return {
     info  = function(m) print("INFO ["..name.."]: "..m) end,
     warn  = function(m) print("WARN ["..name.."]: "..m) end,

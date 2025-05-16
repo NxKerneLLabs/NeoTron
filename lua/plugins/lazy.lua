@@ -2,11 +2,9 @@
 -- Main configuration file for lazy.nvim plugin manager.
 
 -- Obtain a namespaced logger from core.debug
-local logger
-local core_debug_ok, core_debug = pcall(require, "core.debug.logger")
-if core_debug_ok and core_debug and core_debug.get_logger then
-  logger = core_debug.get_logger("plugins.lazy")
-else
+local fallback = require("core.debug.fallback")
+local ok_dbg, dbg = pcall(require, "core.debug.logger")
+local logger = (ok_dbg and dbg.get_logger and dbg.get_logger("plugins.lazy")) or fallback
   -- Fallback basic logging if core.debug or get_logger is not available.
   logger = {
     info = function(msg) vim.notify("LAZY_SETUP INFO: " .. msg, vim.log.levels.INFO) end,
@@ -19,7 +17,7 @@ else
   elseif not core_debug.get_logger then
      logger.error("core.debug.get_logger function not found. Using fallback logger.")
   end
-end
+
 
 -- Function to bootstrap lazy.nvim if it's not already installed.
 local function bootstrap_lazy()
@@ -108,13 +106,14 @@ local plugin_spec_files = {
   "plugins.which-key",
   "plugins.lsp",
   "plugins.cmp",
+  "plugins.neo-tree",
   "plugins.treesitter",
   "plugins.git",
   "plugins.telescope",
   "plugins.nvimtree",
   "plugins.terminal",
-  "plugins.dap", -- Renamed from plugins.debug to plugins.dap for clarity if it only contains DAP
-                  -- This should ideally be part of plugins.ui or loaded very early
+  "plugins.dap",
+  "which-key-lsp"
 }
 
 local specs_to_load = {} -- Table to hold all collected plugin specifications.

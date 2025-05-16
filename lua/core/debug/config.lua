@@ -3,6 +3,9 @@
 
 local M = {}
 
+--tls_cert = "/caminho/para/server.crt",
+--tls_key  = "/caminho/para/server.key",
+
 -- Default log file and levels
 M.log_file         = vim.fn.stdpath("data") .. "/nvim-debug.log"
 M.log_level        = vim.log.levels.DEBUG

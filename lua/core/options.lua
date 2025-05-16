@@ -56,5 +56,33 @@ opt.mouse = "a"           -- Mouse em todos modos
 opt.clipboard = "unnamedplus" -- Usa clipboard do sistema
 opt.pumheight = 10         -- Altura do popup de completions
 
+
+-- Ajuste de formatoptions via autocmd para garantir persistência
+vim.api.nvim_create_autocmd("BufEnter", {
+  pattern = "*",
+  callback = function()
+    vim.opt.formatoptions:remove({ "c", "r", "o" })
+  end,
+  desc = "Remove auto-comment formatoptions c, r, o on buffer enter"
+})
+
+opt.updatetime = 300       -- Atualiza CursorHold a cada 300ms
+opt.timeoutlen = 500       -- Espera de mapeamentos
+opt.ttimeoutlen = 10       -- Espera por escape sequence curto
+
+-- Splits
+opt.splitbelow = true      -- Splits horizontais abrem abaixo
+opt.splitright = true      -- Splits verticais abrem à direita
+
+-- Configurações adicionais
+opt.completeopt = "menu,menuone,noselect" -- Autocompletar ideal para nvim-cmp
+opt.mouse = "a"           -- Mouse em todos modos
+opt.clipboard = "unnamedplus" -- Usa clipboard do sistema
+opt.pumheight = 10         -- Altura do popup de completions
+
+-- Líder global/local definidos antes de keymaps
+g.mapleader = " "         -- Espaço
+g.maplocalleader = "\\"   -- Barra invertida
+
 logger.info("Opções globais carregadas e configuradas com sucesso.")
 

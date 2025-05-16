@@ -70,8 +70,8 @@ return {
       end
       ibl.setup(opts_from_lazy)
       plugin_logger.info("indent-blankline.nvim configured.")
-    end,
-  },
+      end,
+     },
 
   -- Ícones para a UI (dependência comum para muitos plugins de UI)
   {
@@ -180,7 +180,7 @@ return {
           backend = { "telescope", "fzf", "builtin" }, -- Order of preference
           trim_prompt = true,
           telescope = {}, -- Uses default Telescope theme/layout
-          -- fzf = { window = { width = 0.5, height = 0.4 } },
+          fzf = { window = { width = 0.5, height = 0.4 } },
           builtin = {
             border = "rounded",
             relative = "editor",

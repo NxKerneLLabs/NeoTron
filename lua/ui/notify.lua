@@ -64,7 +64,7 @@ return {
 
       notify.setup({
         background_colour = "#1a1b26", -- Matches Tokyonight background
-        fps = 60,
+        fps = 30,
         icons = notify_icons,
         level = vim.log.levels.INFO, -- Minimum level to display
         minimum_width = 45,

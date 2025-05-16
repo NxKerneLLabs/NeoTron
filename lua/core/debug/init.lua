@@ -3,6 +3,9 @@
 
 local M = {}
 
+-- Module cache for safe_require
+local _mod_cache = {}  -- Inicialização da tabela para evitar erro de nil
+
 -- Fallback notifier
 local function initial_notify(msg, level)
   vim.notify("[CORE_DEBUG_INIT] " .. msg, level or vim.log.levels.ERROR)
@@ -21,14 +24,6 @@ local function safe_require(path)
   end
   _mod_cache[path] = { ok = ok, mod = mod }
   return ok, mod
-end
-
--- Around line 24 in core/debug/init.lua
-local profiler_ok, profiler = safe_require("core.debug.profiler")
-if not profiler_ok or type(profiler) ~= "table" then
-  profiler_ok = true
-  profiler = { profile = function(func) return func end } -- Dummy profiler
-  initial_notify("Profiler module invalid, using fallback", vim.log.levels.WARN)
 end
 
 

@@ -2,23 +2,9 @@
 -- Loads the selected theme dynamically and other UI plugin specifications.
 
 -- Obtain a namespaced logger from core.debug
-local logger
-local core_debug_ok, core_debug = pcall(require, "core.debug.logger")
-if core_debug_ok and core_debug and core_debug.get_logger then
-  logger = core_debug.get_logger("plugins.ui")
-else
-  logger = {
-    info = function(msg) vim.notify("PLUGINS_UI INFO: " .. msg, vim.log.levels.INFO) end,
-    error = function(msg) vim.notify("PLUGINS_UI ERROR: " .. msg, vim.log.levels.ERROR) end,
-    warn = function(msg) vim.notify("PLUGINS_UI WARN: " .. msg, vim.log.levels.WARN) end,
-    debug = function(msg) vim.notify("PLUGINS_UI DEBUG: " .. msg, vim.log.levels.DEBUG) end,
-  }
-  if not core_debug_ok then
-    logger.error("core.debug.logger module not found. Using fallback logger. Error: " .. tostring(core_debug))
-  elseif not (core_debug and core_debug.get_logger) then -- Verificação mais robusta
-     logger.error("core.debug.get_logger function not found. Using fallback logger.")
-  end
-end
+local fallback = require("core.debug.fallback")
+local ok_dbg, dbg = pcall(require, "core.debug.logger")
+local logger = (ok_dbg and dbg.get_logger and dbg.get_logger("plugins.ui")) or fallback
 
 -- Determine the theme to load
 local default_theme_name = "tokyonight_theme"

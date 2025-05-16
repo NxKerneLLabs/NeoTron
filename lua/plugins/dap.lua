@@ -1,6 +1,8 @@
 -- nvim/lua/plugins/dap.lua
 -- Plugin specifications for DAP (Debug Adapter Protocol), UI, and virtual text.
-
+local fallback = require("core.debug.fallback")
+local ok_dbg, dbg = pcall(require, "core.debug.logger")
+local logger = (ok_dbg and dbg.get_logger and dbg.get_logger("plugins.dap")) or fallback
 return {
   -- ╭──────────────────────────────────────────────────────────╮
   -- │ 🐞 Core DAP Functionality                                  │

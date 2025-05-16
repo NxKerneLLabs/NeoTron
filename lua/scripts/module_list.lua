@@ -26,23 +26,23 @@ end
 local logger_ok, core_debug = pcall(require, "core.debug.logger")
 local logger = nil
 if logger_ok and type(core_debug) == "table" and type(core_debug.get_logger) == "function" then
-  logger = core_debug.get_logger("keymaps.modules")
+  logger = core_debug.get_logger("check_keymap_modules")
 else
   logger = {
-    info = function(msg) print(icons.info .. " [keymaps.modules] " .. msg) end,
-    warn = function(msg) print(icons.warn .. " [keymaps.modules] " .. msg) end,
-    error = function(msg) print(icons.error .. " [keymaps.modules] " .. msg) end,
-    debug = function(msg) print(icons.debug .. " [keymaps.modules] " .. msg) end,
-    success = function(msg) print(icons.success .. " [keymaps.modules] " .. msg) end,
+    info = function(msg) print(icons.info .. " [check_keymap_modules] " .. msg) end,
+    warn = function(msg) print(icons.warn .. " [check_keymap_modules] " .. msg) end,
+    error = function(msg) print(icons.error .. " [check_keymap_modules] " .. msg) end,
+    debug = function(msg) print(icons.debug .. " [check_keymap_modules] " .. msg) end,
+    success = function(msg) print(icons.success .. " [check_keymap_modules] " .. msg) end,
   }
 end
 
 logger.info("Iniciando verificação dos módulos de keymaps...")
 
 -- Tenta carregar a lista de módulos
-local ok, modules = pcall(require, "keymaps.modules")
+local ok, modules = pcall(require, "keymaps.module_list")
 if not ok then
-  logger.error("Falha ao carregar keymaps.modules: " .. tostring(modules))
+  logger.error("Falha ao carregar keymaps.module_list: " .. tostring(modules))
   return
 end
 

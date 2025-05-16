@@ -1,24 +1,8 @@
 -- lua/themes/tokyonight_theme.lua
 local logger
-local logger_ok, logger_mod = pcall(require, "core.debug.logger")
-if logger_ok and logger_mod.get_logger then
-  logger = logger_mod.get_logger("ui.theme_spec_loader")
-else
-  logger = {
-    info = function(msg) vim.notify("UI_THEME_SPEC INFO: " .. msg, vim.log.levels.INFO) end,
-    error = function(msg) vim.notify("UI_THEME_SPEC ERROR: " .. msg, vim.log.levels.ERROR) end,
-    warn = function(msg) vim.notify("UI_THEME_SPEC WARN: " .. msg, vim.log.levels.WARN) end,
-    debug = function(msg) vim.notify("UI_THEME_SPEC DEBUG: " .. msg, vim.log.levels.DEBUG) end,
-  }
-  if not logger_ok then
-    logger.error("core.debug.logger module not found. Using fallback logger. Error: " .. tostring(logger_mod))
-  elseif not logger_mod.get_logger then
-    logger.error("core.debug.logger.get_logger function not found. Using fallback logger.")
-  end
-end
-
-logger.info("Defining Tokyonight theme specification (lua/themes/tokyonight_theme.lua)...")
-
+local fallback = require("core.debug.fallback")
+local ok_dbg, dbg = pcall(require, "core.debug.logger")
+local logger = (ok_dbg and dbg.get_logger and dbg.get_logger("ui.tokyonight.nvim")) or fallback
 return {
   {
     "folke/tokyonight.nvim",

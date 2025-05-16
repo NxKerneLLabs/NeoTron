@@ -28,7 +28,7 @@ return {
     "akinsho/bufferline.nvim",
     event = { "BufReadPre", "BufNewFile" },
     dependencies = {
-      "nvim-tree/nvim-web-devicons", -- For file icons
+      "nvim-tree/nvim-web-devicons",
     },
     config = function()
       local plugin_logger
@@ -84,7 +84,7 @@ return {
           diagnostics = "nvim_lsp",
           diagnostics_update_in_insert = false,
           diagnostics_indicator = function(_, _, diag)
-            local s = ""
+            local s = " "
             if diag.error and diag.error > 0 then s = s .. (diagnostics_icons.Error or "E") .. diag.error .. " " end
             if diag.warning and diag.warning > 0 then s = s .. (diagnostics_icons.Warn or "W") .. diag.warning .. " " end
             if diag.info and diag.info > 0 then s = s .. (diagnostics_icons.Info or "I") .. diag.info .. " " end
@@ -109,6 +109,12 @@ return {
         },
       })
       plugin_logger.info("Bufferline configured.")
+
+
+      -- REMOVIDO: Bloco de registo de keymaps do Bufferline com which-key.
+      -- Esta responsabilidade foi movida para o orquestrador de keymaps (lua/keymaps/init.lua)
+      -- e para o ficheiro de definição (lua/keymaps/definitions/bufferline.lua).
+      -- plugin_logger.info("Bufferline keymap registration with which-key will be handled by the central keymap orchestrator.")
     end,
   },
 

@@ -1,6 +1,8 @@
 -- nvim/lua/plugins/lsp.lua corrigido
 -- Plugin specifications for LSP, Mason, linters, formatters, and diagnostics.
-
+local fallback = require("core.debug.fallback")
+local ok_dbg, dbg = pcall(require, "core.debug.logger")
+local logger = (ok_dbg and dbg.get_logger and dbg.get_logger("plugins.lsp")) or fallback
 return {
   -- ╭──────────────────────────────────────────────────────────╮
   -- │ 🤖 LSP Core Configuration                                  │
@@ -241,3 +243,4 @@ return {
   -- Sem alterações nas outras seções do código...
   -- Resto do arquivo permanece igual
 }
+

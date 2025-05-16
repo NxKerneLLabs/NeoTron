@@ -210,7 +210,7 @@ M.kinds = {
 -- DAP specific icons
 M.dap = {
   Breakpoint = "●",
-  BreakpointCondition = "◆",
+  Break  = "◆",
   LogPoint = "◆",
   Stopped = "→",
   FrameCurrent = M.ui.ArrowRight,
@@ -226,14 +226,15 @@ M.dap = {
   Collapsed = "▸",
 }
 
--- Logger
+-- Logger setup with proper block closure
 local logger
 local logger_ok, logger_mod = pcall(require, "core.debug.logger")
-if logger_ok and logger_mod.get_logger then
+if logger_ok and logger_mod and logger_mod.get_logger then
   logger = logger_mod.get_logger("utils.icons")
   logger.info("utils.icons module loaded successfully.")
 else
-  vim.notify("utils.icons loaded, but core.debug.logger failed: " .. tostring(logger_mod), vim.log.levels.WARN)
+  vim.notify("utils.icons loaded, but failed to load core.debug.logger", vim.log.levels.WARN)
 end
 
 return M
+

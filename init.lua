@@ -1,63 +1,49 @@
 -- ~/.config/nvim/init.lua
-vim.g.python3_host_prog = "/usr/bin/python3"
-vim.g.selected_theme_name = "tokyonight"
-vim.g.mapleader = " "
-vim.g.maplocalleader = "\\"
-vim.g.editorconfig = false
+-- Refactored bootstrapping with unified error handling and single logger
 
--- 1. Core debug
-local debug_ok, debug_err = pcall(require, "core.debug")
-if not debug_ok then
-  vim.notify("Erro ao carregar 'core.debug': " .. tostring(debug_err), vim.log.levels.ERROR)
+-- Globals
+vim.g.python3_host_prog    = "/usr/bin/python3"
+vim.g.selected_theme_name  = "tokyonight_theme"
+vim.g.mapleader            = " "
+vim.g.maplocalleader       = "\\"
+vim.g.editorconfig         = false
+
+-- Bootstrap logger & guard
+local function try(require_mod)
+  local ok, mod = pcall(require, require_mod)
+  if not ok then
+    vim.notify("[init] Failed to load '" .. require_mod .. "': " .. tostring(mod), vim.log.levels.ERROR)
+    return nil
+  end
+  return mod
 end
 
--- 2. Opções básicas
-local ok, err = pcall(require, "core.options")
-if not ok then
-  vim.notify("Erro ao carregar 'core.options': " .. tostring(err), vim.log.levels.ERROR)
-end
+-- Core modules
+local debug       = try("core.debug")
+local logger_mod  = try("core.debug.logger")
 
--- 3. Logger
-local logger
-local logger_ok, logger_mod = pcall(require, "core.debug.logger")
-if logger_ok and type(logger_mod.get_logger) == "function" then
-  logger = logger_mod.get_logger("init")
-else
-  logger = {
-    info = function(_, msg) vim.notify("[init] INFO: " .. msg, vim.log.levels.INFO) end,
-    error = function(_, msg) vim.notify("[init] ERROR: " .. msg, vim.log.levels.ERROR) end,
-  }
-end
+-- Simplified logger API
+local logger = logger_mod and logger_mod.get_logger("init") or {
+  info  = function(_, m) vim.notify("[init] INFO: " .. m, vim.log.levels.INFO) end,
+  error = function(_, m) vim.notify("[init] ERROR: " .. m, vim.log.levels.ERROR) end,
+}
 
--- 4. Lazy.nvim
-local plugins_ok, err_plugins = pcall(require, "plugins.lazy")
-if not plugins_ok then
-  logger.error("init", "Erro ao carregar plugins.lazy: " .. tostring(err_plugins))
-  return
-end
-logger.info("init", "lazy.nvim carregado.")
+-- Load essential settings
+try("core.options") and logger.info("init", "Options loaded.")
+try("core.autocmds") and logger.info("init", "Autocmds loaded.")
 
--- 5. Autocmds e keymaps
-local autocmds_ok, err_autocmds = pcall(require, "core.autocmds")
-if not autocmds_ok then
-  logger.error("init", "Erro ao carregar core.autocmds: " .. tostring(err_autocmds))
-else
-  logger.info("init", "Autocmds carregados.")
-end
+-- Load keymaps and forensic tools
+try("core.keymaps.init") and logger.info("init", "Keymaps loaded.")
+require("utils.forensic").enable()
 
-local keymaps_ok, err_keymaps = pcall(require, "core.keymaps.init")
-if not keymaps_ok then
-  logger.error("init", "Erro ao carregar core.keymaps: " .. tostring(err_keymaps))
-else
-  logger.info("init", "Keymaps carregados.")
-end
+-- Plugin manager
+local lazy = try("plugins.lazy")
+if not lazy then return end
+logger.info("init", "lazy.nvim initialized.")
 
--- 6. Which-key
-local wk_ok, err_wk = pcall(require, "plugins.which-key")
-if not wk_ok then
-  logger.error("init", "Erro ao carregar plugins.which-key: " .. tostring(err_wk))
-else
-  logger.info("init", "Which-key carregado.")
-end
+-- Which-key / mapping hint
+try("plugins.definitive") and logger.info("init", "Which-key loaded.")
 
-logger.info("init", "Configuração do Neovim concluída com sucesso!")
+-- Signal ready
+debug and debug.info("init", "Neovim configuration fully loaded.")
+logger.info("init", "Startup complete.")

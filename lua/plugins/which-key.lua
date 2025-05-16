@@ -1,17 +1,7 @@
 -- plugins/which-key.lua
-local logger = require("core.debug.logger") or nil
-
-local function create_fallback_logger(prefix)
-  return {
-    info = function(msg) print("INFO [" .. prefix .. "]: " .. msg) end,
-    warn = function(msg) print("WARN [" .. prefix .. "]: " .. msg) end,
-    error = function(msg) print("ERROR [" .. prefix .. "]: " .. msg) end,
-    debug = function(msg) print("DEBUG [" .. prefix .. "]: " .. msg) end,
-  }
-end
-
-logger = logger or create_fallback_logger("plugins.which-key")
-
+local fallback = require("core.debug.fallback")
+local ok_dbg, dbg = pcall(require, "core.debug.logger")
+local logger = (ok_dbg and dbg.get_logger and dbg.get_logger("plugins.which-key")) or fallback
 return {
   "folke/which-key.nvim",
   event = "VeryLazy",
@@ -28,6 +18,7 @@ return {
         },
       },
       replace = {
+      key_labels = {
         ["<leader>"] = "󱁐",
       },
       icons = {
@@ -46,6 +37,15 @@ return {
         title = true,
         title_pos = "center",
         zindex = 1000,
+      popup_mappings = {
+        scroll_down = "<c-d>",
+        scroll_up = "<c-u>",
+      },
+      window = {
+        border = "single",
+        position = "bottom",
+        margin = { 1, 0, 1, 0 },
+        padding = { 1, 1, 1, 1 },
       },
       layout = {
         height = { min = 4, max = 25 },
@@ -55,13 +55,26 @@ return {
       },
       show_help = true,
       show_keys = true,
-      triggers = { "" }, -- Fixed: Proper table syntax
+      triggers = { " " }, -- Fixed: Proper table syntax
       disable = { -- Moved: Correct placement
         buftypes = {},
         filetypes = {},
       },
     }) -- End wk.setup
+      ignore_missing = true,
+      hidden = { "<silent>", "<cmd>", "<Cmd>", "<CR>", "call", "lua", "^:", "^ " },
+      show_help = true,
+      show_keys = true,
+      triggers = "auto",
+      disable = {
+        buftypes = {},
+        filetypes = {},
+      },
+    })
 
+    logger.info("which-key configurado com sucesso.")
+  end,
+}
     logger.info("which-key configurado com sucesso.")
   end,
 } -- End return plugin spec

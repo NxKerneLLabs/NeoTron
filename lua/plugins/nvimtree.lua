@@ -1,4 +1,7 @@
 -- nvim/lua/plugins/nvimtree.lua
+local fallback = require("core.debug.fallback")
+local ok_dbg, dbg = pcall(require, "core.debug.logger")
+local logger = (ok_dbg and dbg.get_logger and dbg.get_logger("plugins.nvimtree")) or fallback
 return {
   {
     "nvim-tree/nvim-tree.lua",

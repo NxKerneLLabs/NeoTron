@@ -1,6 +1,8 @@
 -- nvim/lua/plugins/git.lua
 -- Plugin specifications for Git integration: gitsigns, diffview, fugitive, and templ (GitLab CI).
-
+local fallback = require("core.debug.fallback")
+local ok_dbg, dbg = pcall(require, "core.debug.logger")
+local logger = (ok_dbg and dbg.get_logger and dbg.get_logger("plugins.git")) or fallback
 return {
   -- ╭──────────────────────────────────────────────────────────╮
   -- │ 📊 Gitsigns (Git decorations in the signcolumn)          │
@@ -15,7 +17,7 @@ return {
       if core_debug_ok and core_debug and core_debug.get_logger then
         logger = core_debug.get_logger("plugins.gitsigns")
       else
-        logger = { info = function(m) print("INFO [GitSignsP_FB]: " .. m) end, error = function(m) print("ERROR [GitSignsP_FB]: " .. m) end, warn = function(m) print("WARN [GitSignsP_FB]: " .. m) end, debug = function(m) print("DEBUG [GitSignsP_FB]: " .. m) end }
+        logger = { info = function(m) print("INFO [GitSignsP_FB]: " .. m) end, error = function(m) print("ERROR [GitSignsP_FB]: " .. m) end, warn = function(m) print("WARN[GitSignsP_FB]: " .. m) end, debug = function(m) print("DEBUG [GitSignsP_FB]: " .. m) end }
         logger.error("core.debug.get_logger not found. Using fallback for gitsigns config.")
       end
 
@@ -31,7 +33,9 @@ return {
       local signs_config = { -- Renomeado para signs_config para evitar conflito com a variável global signs
         add = { text = "▎" }, change = { text = "▎" }, delete = { text = "▎" },
         topdelete = { text = "▎" }, changedelete = { text = "▎" }, untracked = { text = "▎" },
-      }
+       }
+    end
+
       if icons_ok and icons_utils and icons_utils.git then
         signs_config.add          = { text = icons_utils.git.GitSignsAdd or "▎A" }
         signs_config.change       = { text = icons_utils.git.GitSignsChange or "▎M" }
@@ -42,7 +46,7 @@ return {
         logger.debug("Using custom icons for gitsigns.")
       else
         logger.warn("utils.icons.git not found for gitsigns. Using default text signs. Error: " .. tostring(icons_utils))
-      end
+     end
 
       gitsigns.setup({
         signs = signs_config,

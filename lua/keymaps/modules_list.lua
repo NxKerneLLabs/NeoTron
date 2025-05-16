@@ -4,10 +4,8 @@ return {
   { path = "keymaps.definitions.git" },
   { path = "keymaps.definitions.lsp" },
   { path = "keymaps.definitions.telescope" },
-  { path = "keymaps.definitions.nvimtree" },
+  { path = "keymaps.definitions.neo-tree" },
   { path = "keymaps.definitions.bufferline" },
-  { path = "keymaps.definitions.debug" },
-  { path = "keymaps.definitions.ui" },
   { path = "keymaps.definitions.keymaps" },   -- <— nosso novo módulo
 }
 
