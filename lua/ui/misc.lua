@@ -3,7 +3,7 @@
 
 -- Obtain a namespaced logger from core.debug for this module file itself
 local logger
-local core_debug_ok, core_debug = pcall(require, "core.debug")
+local core_debug_ok, core_debug = pcall(require, "core.debug.logger")
 if core_debug_ok and core_debug and core_debug.get_logger then
   logger = core_debug.get_logger("ui.misc_specs") -- Logger for this spec file
 else
@@ -70,8 +70,8 @@ return {
       end
       ibl.setup(opts_from_lazy)
       plugin_logger.info("indent-blankline.nvim configured.")
-    end,
-  },
+      end,
+     },
 
   -- Ícones para a UI (dependência comum para muitos plugins de UI)
   {
@@ -180,7 +180,7 @@ return {
           backend = { "telescope", "fzf", "builtin" }, -- Order of preference
           trim_prompt = true,
           telescope = {}, -- Uses default Telescope theme/layout
-          -- fzf = { window = { width = 0.5, height = 0.4 } },
+          fzf = { window = { width = 0.5, height = 0.4 } },
           builtin = {
             border = "rounded",
             relative = "editor",

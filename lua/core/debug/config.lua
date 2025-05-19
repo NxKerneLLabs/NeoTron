@@ -3,6 +3,9 @@
 
 local M = {}
 
+--tls_cert = "/caminho/para/server.crt",
+--tls_key  = "/caminho/para/server.key",
+
 -- Default log file and levels
 M.log_file         = vim.fn.stdpath("data") .. "/nvim-debug.log"
 M.log_level        = vim.log.levels.DEBUG
@@ -15,7 +18,7 @@ M.stacktrace_depth = 10             -- max stacktrace lines for error logs
 -- Advanced features
 M.silent_mode      = false          -- when true, suppresses vim.notify for INFO+ logs
 M.compress_backups = true           -- gzip .bak files if available
-M.performance_log  = true           -- log internal performance metrics
+M.performance_log  = false           -- log internal performance metrics
 
 -- Namespace-specific log levels
 M.namespaces = {

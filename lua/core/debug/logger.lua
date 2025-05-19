@@ -1,161 +1,151 @@
--- nvim/lua/core/debug/logger.lua
--- Logger system with buffering, file rotation, compression, silent mode, and performance logging
+-- lua/core/debug/logger.lua
+-- Refatorado: logger modular + parser de strace com UI colorida e icons
 
 local config = require("core.debug.config")
+local fallback = require("core.debug.fallback")
+-- Utility to safely require modules with caching and fallback notifications
+local _mod_cache = {}
+local function safe_require(path)
+  if _mod_cache[path] then
+    return _mod_cache[path].ok, _mod_cache[path].mod
+  end
+  local ok, mod = pcall(require, path)
+  if not ok then
+    fallback.error("Failed to load " .. path .. ": " .. tostring(mod))
+  elseif type(mod) ~= "table" then
+    fallback.warn("Module " .. path .. " returned " .. type(mod) .. ", expected table")
+  end
+  _mod_cache[path] = { ok = ok, mod = mod }
+  return ok, mod
+end
+
+-- Corrected line: Remove invalid syntax and provide fallback if module load fails
+local icons_ok, icons = safe_require("utils.icons")
+if not icons_ok then
+  icons = {} -- Fallback to empty table if module fails to load
+end
+
+local api = vim.api
+local uv = vim.loop
 
 local M = {}
-local buffer = {}
-local timer = nil
+local buffer      = {}
+local perf_buffer = {}
+local timer       = nil
 
--- Map log levels to string names
-local level_names = {
-  [vim.log.levels.DEBUG] = "DEBUG",
-  [vim.log.levels.INFO]  = "INFO",
-  [vim.log.levels.WARN]  = "WARN",
-  [vim.log.levels.ERROR] = "ERROR",
-  [vim.log.levels.TRACE] = "TRACE",
+-- Nomes de níveis e cor ANSI
+local Level = {
+  DEBUG = { name = "DEBUG", color = "\27[34m" },  -- azul
+  INFO  = { name = "INFO",  color = "\27[36m" },  -- ciano
+  WARN  = { name = "WARN",  color = "\27[33m" },  -- amarelo
+  ERROR = { name = "ERROR", color = "\27[31m" },  -- vermelho
+  TRACE = { name = "TRACE", color = "\27[35m" },  -- magenta
+  FATAL = { name = "FATAL", color = "\27[41m" },  -- fundo vermelho
+  FLUSH = { name = "FLUSH", color = "\27[32m" },  -- verde
 }
 
--- Helper: convert level to string
-local function level_to_string(level)
-  return level_names[level] or string.format("LVL_%d", level or -1)
+-- Helper: level to ANSI prefix
+local function color_prefix(lvl)
+  return (Level[lvl] and Level[lvl].color) or ""
 end
 
--- Performance tracking
-local last_perf_time = vim.loop.hrtime()
-local function log_perf(event)
-  if config.performance_log then
-    local now = vim.loop.hrtime()
-    local elapsed_ms = (now - last_perf_time) / 1e6
-    last_perf_time = now
-    buffer[#buffer+1] = string.format("[PERF] [%s] Elapsed %.2fms\n", event, elapsed_ms)
-  end
-end
-
--- Rotate log file and optionally compress backup
-local function rotate_log()
-  log_perf("before_rotate")
+-- Logging básico
+local function emit(level, ns, msg)
   if not config.enabled then return end
-  local stat = vim.uv.fs_stat(config.log_file)
-  if stat and stat.size > config.max_file_size then
-    local bak = config.log_file .. ".bak"
-    pcall(vim.uv.fs_unlink, bak)
-    local ok, err = vim.uv.fs_rename(config.log_file, bak)
-    if not ok then
-      if not config.silent_mode then
-        vim.notify(string.format("[DEBUG] Rotate failed: %s", tostring(err)), vim.log.levels.ERROR)
-      end
-    elseif config.compress_backups then
-      vim.fn.jobstart({"gzip", "-f", bak}, {detach=true})
-    end
-  end
-  log_perf("after_rotate")
+  local entry = string.format("[%s] [%s] [%s] %s",
+    os.date("%H:%M:%S"), level, ns, msg)
+  table.insert(buffer, entry)
+  if #buffer >= config.buffer_size then M.flush() end
 end
 
--- Flush buffer to file
-local function flush_buffer()
-  log_perf("before_flush")
-  if not config.enabled or #buffer == 0 then return end
-  rotate_log()
-  local file, err = vim.uv.fs_open(config.log_file, "a", 420)
-  if not file then
-    if not config.silent_mode then
-      vim.notify(string.format("[DEBUG] Flush open failed: %s", tostring(err)), vim.log.levels.ERROR)
-    end
-    return
+function M.debug(ns, msg) emit("DEBUG", ns, msg) end
+function M.info(ns, msg)  emit("INFO",  ns, msg) end
+function M.warn(ns, msg)  emit("WARN",  ns, msg) end
+function M.error(ns, msg) emit("ERROR", ns, msg) end
+function M.flush()
+  table.insert(buffer, string.format("[%s] [%s] Flushing logs...", os.date("%H:%M:%S"), "FLUSH"))
+  -- gravação simplificada
+  local file = uv.fs_open(config.log_file), "a", 420
+  if file then
+    uv.fs_write(file, table.concat(buffer, "\n") .. "\n", -1)
+    uv.fs_close(file)
+    buffer = {}
+  else
+    fallback.error("Failed to open log file for flush")
   end
-  local data = table.concat(buffer)
-  vim.uv.fs_write(file, data, -1)
-  vim.uv.fs_close(file)
-  buffer = {}
-  log_perf("after_flush")
 end
 
--- Capture stacktrace
-local function get_stacktrace(offset)
-  offset = offset or 2
-  local maxd = config.stacktrace_depth or 10
+--==============================================================================
+-- PARSING E RENDERIZAÇÃO DE STRACE
+--==============================================================================
+
+-- Extrai linhas de interesse de um dump de strace
+function M.parse_strace(raw)
+  local entries = {}
+  for line in raw:gmatch("[^\n]+") do
+    local ts, pid, call = line:match("(%d+:%d+:%d+)%s+<(%d+)>%s+%s*([^ ]+)%((.*)%)%s+=%s+([^ ]+)")
+    if ts and pid then
+      table.insert(entries, {
+        ts      = ts,
+        pid     = pid,
+        syscall = call,
+        args    = (line:match(call .. "%((.*)%)")),
+        ret     = line:match("=%s+([^ ]+)%s"),
+        raw     = line,
+      })
+    end
+  end
+  return entries
+end
+
+-- Renderiza com cor e icons
+function M.render_strace(entries)
   local lines = {}
-  for i = offset, offset + maxd -1 do
-    local info = debug.getinfo(i, "Slnu")
-    if not info then break end
-    local name = info.name or info.namewhat or "<anonymous>"
-    lines[#lines+1] = string.format("#%d: %s:%d in %s (%s, %d upvalues)",
-      i-offset, info.short_src or "?", info.currentline or -1,
-      name, info.what or "?", info.nups or 0)
+  -- Header
+  table.insert(lines, "┌─ Strace Report ───────────────────────────────────────────────────┐")
+  table.insert(lines, "| Timestamp  PID  Level  Syscall      Args                Ret     |")
+  table.insert(lines, "├─────────────────────────────────────────────────────────────────┤")
+
+  for idx, e in ipairs(entries) do
+    -- determinar nível por palavras-chave
+    local lvl = "INFO"
+    if e.raw:find("E[A-Z]+") then lvl = "ERROR"
+    elseif e.syscall == "open" or e.syscall == "close" then lvl = "FLUSH" end
+    -- prefix e icon
+    local icon = (icons.misc and icons.misc.CheckboxChecked) or "✔"
+    local color = color_prefix(lvl)
+    local reset = "\27[0m"
+    local ln = string.format(" %3d %s%-8s%s %s%-10s%s %-20s %-10s %s",
+      idx,
+      color, lvl, reset,
+      color, e.syscall or "unknown", reset,
+      e.args or "",
+      e.ret or "",
+      icon)
+    table.insert(lines, ln)
   end
+
+  -- Footer
+  table.insert(lines, "└─────────────────────────────────────────────────────────────────┘")
+  -- Legend
+  table.insert(lines, "Legend: " ..
+    "\27[31mError\27[0m " ..
+    "\27[33mWarn\27[0m " ..
+    "\27[32mFlush\27[0m " ..
+    "\27[36mInfo\27[0m " ..
+    "\27[35mTrace\27[0m")
+
   return table.concat(lines, "\n")
 end
 
--- Format log message
-local function format_msg(level, ns, msg)
-  local time = os.date("%Y-%m-%d %H:%M:%S")
-  return string.format("[%s] [%s] [%s] %s", time, level_to_string(level), ns or "default_ns", msg)
-end
-
--- Core log function
-local function log(level, ns, msg, stack_override)
-  if not config.enabled then return end
-  local lvl = level or vim.log.levels.INFO
-  local eff = config.namespaces[ns] or config.namespaces["default"] or config.log_level
-  if lvl < eff then return end
-  local base = format_msg(lvl, ns, msg)
-  local text = base
-  if stack_override or (lvl == vim.log.levels.ERROR and config.stacktrace_depth > 0) then
-    text = text .. "\nStack:\n" .. get_stacktrace(4)
-  end
-  buffer[#buffer+1] = text .. "\n"
-  if not config.silent_mode and lvl >= vim.log.levels.INFO then
-    vim.notify(base, lvl)
-  end
-  if #buffer >= config.buffer_size then flush_buffer() end
-end
-
--- Public methods
-M.debug   = function(ns, msg) log(vim.log.levels.DEBUG,   ns, msg) end
-M.info    = function(ns, msg) log(vim.log.levels.INFO,    ns, msg) end
-M.warn    = function(ns, msg) log(vim.log.levels.WARN,    ns, msg) end
-M.error   = function(ns, msg) log(vim.log.levels.ERROR,   ns, msg, true) end
-
--- Expose utilities
-M.flush   = flush_buffer
-M.rotate  = rotate_log
-M.get_buffer = function() return buffer end
-
--- Factory
+-- Add a method to get a logger instance for a specific namespace
 function M.get_logger(ns)
-  local valid = (type(ns)=="string" and #ns>0) and ns or "unknown_ns"
-  if valid=="unknown_ns" then M.warn("core.debug.logger", "Invalid namespace, using unknown_ns") end
   return {
-    debug = function(m) M.debug(valid, m) end,
-    info  = function(m) M.info(valid, m) end,
-    warn  = function(m) M.warn(valid, m) end,
-    error = function(m) M.error(valid, m) end,
+    debug = function(msg) M.debug(ns, msg) end,
+    info  = function(msg) M.info(ns, msg) end,
+    warn  = function(msg) M.warn(ns, msg) end,
+    error = function(msg) M.error(ns, msg) end,
   }
 end
 
--- Timer init
-local ok_t, t = pcall(vim.loop.new_timer)
-if ok_t and t and config.enabled and config.flush_interval>0 then
-  timer = t
-  timer:start(config.flush_interval, config.flush_interval, vim.schedule_wrap(flush_buffer))
-elseif not ok_t then
-  vim.notify("[DEBUG] Timer init failed", vim.log.levels.ERROR)
-end
-
--- Shutdown
-function M.shutdown()
-  M.info("core.debug.logger", "Shutdown: flushing logs")
-  if timer then
-    pcall(timer.stop, timer)
-    pcall(timer.close, timer)
-    timer = nil
-  end
-  flush_buffer()
-end
-vim.api.nvim_create_autocmd("VimLeavePre", {
-  pattern = "*", callback = M.shutdown,
-  desc = "Flush logs on exit"})
-
 return M
-

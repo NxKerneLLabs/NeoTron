@@ -5,7 +5,7 @@ local M = {}
 
 -- Obtain a namespaced logger from core.debug
 local logger
-local core_debug_ok, core_debug = pcall(require, "core.debug")
+local core_debug_ok, core_debug = pcall(require, "core.debug.logger")
 if core_debug_ok and core_debug and core_debug.get_logger then
   logger = core_debug.get_logger("functions.dap")
 else
