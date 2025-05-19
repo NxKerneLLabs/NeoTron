@@ -1,3 +1,25 @@
 lazy-lock-current.json
 *.swp
 *.bak
+# Arquivos de log e temporários
+/tmp/*
+*.log
+*.swp
+*.swo
+
+# Arquivos de dados sensíveis
+secrets.lua
+*.key
+*.token
+*.gpg
+
+# Pastas de plugins ou caches
+.git
+.cache
+undo/
+backup/
+swap/
+
+# Configs locais específicas
+local.lua
+
