@@ -1,40 +1,39 @@
 -- nvim/lua/utils/init.lua
--- Este arquivo serve como o ponto de entrada para o pacote 'utils'.
--- Ele pode carregar e expor outros módulos dentro do diretório 'utils'.
-local logger
-local debug_ok, debug = pcall(require, "core.debug.logger")
-if not debug_ok then
-  debug = {
-    info = function(msg) vim.notify("UTILS INFO: " .. msg, vim.log.levels.INFO) end,
-    error = function(msg) vim.notify("UTILS ERROR: " .. msg, vim.log.levels.ERROR) end,
-  }
-  debug.error("core.debug module not found for utils/init.lua.")
+
+local fallback_logger = {
+  info = function(msg) vim.notify("[UTILS INFO] " .. msg, vim.log.levels.INFO) end,
+  error = function(msg) vim.notify("[UTILS ERROR] " .. msg, vim.log.levels.ERROR) end,
+}
+
+local debug = require("core.debug.logger") or fallback_logger
+debug.info("[utils] Package initializing...")
+
+local function load_module(module_name, fallback)
+  local ok, result = pcall(require, module_name)
+  if ok then
+    debug.info(string.format("[utils] Loaded '%s'.", module_name))
+    return result
+  else
+    debug.error(string.format("[utils] Failed to load '%s': %s", module_name, tostring(result)))
+    return fallback or {}
+  end
 end
 
-debug.info("Loading 'utils' package (lua/utils/init.lua)...")
+local utils = {}
 
-local utils_namespace = {}
-
--- Carregar e expor o módulo de ícones
-local icons_module_ok, icons_content = pcall(require, "utils.icons")
-if icons_module_ok then
-  utils_namespace.icons = icons_content
-  debug.info("'utils.icons' loaded and exposed as 'utils.icons'.")
-else
-  debug.error("Failed to load 'utils.icons' module: " .. tostring(icons_content))
-  utils_namespace.icons = {} -- Fornecer uma tabela vazia como fallback
+-- Auto-load all lua files in utils/
+local scan = vim.loop.fs_scandir(vim.fn.stdpath("config") .. "/lua/utils")
+if scan then
+  while true do
+    local name = vim.loop.fs_scandir_next(scan)
+    if not name then break end
+    if name:match("%.lua$") and name ~= "init.lua" then
+      local mod_name = name:gsub("%.lua$", "")
+      utils[mod_name] = load_module("utils." .. mod_name)
+    end
+  end
 end
 
--- Se você tiver outros módulos utilitários no futuro, pode carregá-los aqui também:
--- Exemplo:
--- local other_util_ok, other_util_content = pcall(require, "utils.outromodulo")
--- if other_util_ok then
---   utils_namespace.outro = other_util_content
---   debug.info("'utils.outromodulo' loaded and exposed as 'utils.outro'.")
--- else
---   debug.error("Failed to load 'utils.outromodulo': " .. tostring(other_util_content))
--- end
-
-debug.info("'utils' package initialized.")
-return utils_namespace
+debug.info("[utils] Package ready.")
+return utils
 

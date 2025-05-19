@@ -1,8 +1,5 @@
 -- nvim/lua/plugins/telescope.lua
 -- Plugin specifications for Telescope, project management, and code navigation.
-local fallback = require("core.debug.fallback")
-local ok_dbg, dbg = pcall(require, "core.debug.logger")
-local logger = (ok_dbg and dbg.get_logger and dbg.get_logger("plugins.telescope")) or fallback
 return {
   {
     "nvim-telescope/telescope.nvim",
@@ -14,31 +11,7 @@ return {
       "nvim-telescope/telescope-file-browser.nvim",
       "ahmedkhalf/project.nvim",
     },
-    config = function()
-      -- Logger factory
-      local function get_logger(ns)
-        local ok, dbg = pcall(require, "core.debug.logger")
-        if ok and type(dbg.get_logger) == "function" then
-          local L = dbg.get_logger(ns)
-          if type(L.success) ~= "function" then
-            L.success = function(msg) L.info("✔️ " .. msg) end
-          end
-          return L
-        end
-        return {
-          info    = function(m) print("INFO ["..ns.."] "..m) end,
-          warn    = function(m) print("WARN ["..ns.."] "..m) end,
-          error   = function(m) print("ERROR ["..ns.."] "..m) end,
-          debug   = function(m) print("DEBUG ["..ns.."] "..m) end,
-          success = function(m) print("✔️ ["..ns.."] "..m) end,
-        }
-      end
-      local logger = get_logger("plugins.telescope")
-
-      logger.info("Configuring telescope.nvim...")
-      local ok, telescope = pcall(require, "telescope")
-      if not ok then return logger.error("telescope module not found: "..tostring(telescope)) end
-
+ 
       -- Actions and layout
       local actions = (pcall(require, "telescope.actions") and require("telescope.actions")) or nil
       local actions_layout = (pcall(require, "telescope.actions.layout") and require("telescope.actions.layout")) or nil

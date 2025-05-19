@@ -1,103 +1,158 @@
 -- ~/.config/nvim/init.lua
--- Bootstrapping refatorado com carregamento dinâmico de módulos, logger com namespace e performance
+-- Fixed initialization order
 
--- Início da medição de performance
-local startup_start = vim.loop.hrtime()
+-- 1. BOOTSTRAP LAZY.NVIM FIRST (before anything else)
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+if not vim.loop.fs_stat(lazypath) then
+  vim.fn.system({
+    "git",
+    "clone",
+    "--filter=blob:none",
+    "https://github.com/folke/lazy.nvim.git",
+    "--branch=stable",
+    lazypath,
+  })
+end
+vim.opt.rtp:prepend(lazypath)
 
--- Variáveis globais
-vim.g.python3_host_prog   = "/usr/bin/python3"
-vim.g.selected_theme_name = "tokyonight_theme"  -- altere para outro tema em lua/themes/
-vim.g.mapleader           = " "
-vim.g.maplocalleader      = "\\"
-vim.g.editorconfig        = false
+-- 2. SET LEADERS IMMEDIATELY
+vim.g.mapleader = " "
+vim.g.maplocalleader = "\\"
 
--- Função helper para carregar módulos com pcall e notificar falhas
-local function try(modname, fallback)
-  local ok, mod = pcall(require, modname)
+-- 3. DISABLE PROBLEMATIC PROVIDERS (prevents health warnings)
+vim.g.loaded_perl_provider = 0
+vim.g.loaded_ruby_provider = 0
+
+-- 4. EMERGENCY LOGGING (works without any modules)
+local function emergency_log(msg, level)
+  vim.schedule(function()
+    local hl = level == "ERROR" and "ErrorMsg" or "WarningMsg"
+    vim.api.nvim_echo({{"[INIT] " .. msg, hl}}, true, {})
+  end)
+end
+
+-- 5. SAFE REQUIRE WITH BETTER ERROR HANDLING
+local function safe_require(module_name)
+  local ok, result = pcall(require, module_name)
   if not ok then
-    vim.notify("[init] Falha ao carregar '" .. modname .. "': " .. tostring(mod), vim.log.levels.ERROR)
-    return fallback
+    emergency_log("Failed to load " .. module_name .. ": " .. tostring(result), "ERROR")
+    return nil, result
   end
-  return mod
+  return result, nil
 end
 
--- Carrega módulo de configuração de debug
-local config = try("core.debug.config", {
-  silent_mode = false,
-  buffer_size = 20,
-  flush_interval = 2000,
-  performance_log = false,
-})
-
--- Carrega módulos de debug/logger
-local debug_mod  = try("core.debug", nil)
-local logger_mod = try("core.debug.logger", nil)
-
--- Determina namespace dinâmico para logger
-local log_ns = vim.g.log_namespace or "init"
-
--- Configura logger padronizado
-local logger = logger_mod and logger_mod.get_logger(log_ns) or {
-  info = function(_, msg) vim.notify("[init] INFO: " .. msg, vim.log.levels.INFO) end,
-  error = function(_, msg) vim.notify("[init] ERRO: " .. msg, vim.log.levels.ERROR) end,
-}
-
--- Wrapper para carregar e logar módulos com profiling opcional
-local function load(name)
-  local t0 = vim.loop.hrtime()
-  local ok = try(name)
-  local t1 = vim.loop.hrtime()
-  if ok then
-    logger.info(log_ns, "Módulo '" .. name .. "' carregado.")
-    if config.performance_log and logger_mod and logger_mod.get_buffer then
-      local buf = logger_mod.get_buffer()
-      buf[#buf + 1] = string.format("[PERF] [%s] load('%s') levou %.2fms\n", log_ns, name, (t1 - t0) / 1e6)
-    end
-  end
+-- 6. SETUP LAZY.NVIM IMMEDIATELY (before core modules)
+local lazy_ok, lazy = safe_require("lazy")
+if not lazy_ok then
+  emergency_log("CRITICAL: lazy.nvim failed to load!", "ERROR")
+  return
 end
 
--- Carrega configurações core
-load("core.options")   -- vim.opt e outras opções básicas
-load("core.autocmds")  -- autocommands agrupados
-
--- Carrega keymaps e utils
-load("core.keymaps.init")
-require("utils.forensic").enable()
-
--- Inicializa plugin manager (lazy.nvim)
-local lazy = try("plugins.lazy", nil)
-if not lazy then return end
-logger.info(log_ns, "lazy.nvim inicializado.")
-
--- Configurações de performance condicional para lazy.nvim
+-- Configure lazy with essential plugins first
 lazy.setup({
-  performance = config.performance_log and { rtp = { disabled_plugins = {} } } or nil,
-  defaults = { lazy = true },
+  spec = {
+    -- Essential: Treesitter MUST be first
+    {
+      "nvim-treesitter/nvim-treesitter",
+      build = ":TSUpdate",
+      priority = 1000, -- Load first
+      config = function()
+        local ts_ok, ts_config = safe_require("nvim-treesitter.configs")
+        if ts_ok then
+          ts_config.setup({
+            ensure_installed = { "lua", "vim", "vimdoc", "query" },
+            auto_install = true,
+            sync_install = false,
+            highlight = {
+              enable = true,
+              additional_vim_regex_highlighting = false,
+            },
+          })
+          emergency_log("Treesitter configured successfully")
+        end
+      end,
+    },
+    
+    -- Import your other plugins (but they'll load after treesitter)
+    { import = "plugins" },
+  },
+  
+  defaults = { 
+    lazy = true,
+    version = false, -- Don't version lock plugins
+  },
+  
+  install = { 
+    colorscheme = { "default" } 
+  },
+  
+  performance = {
+    rtp = {
+      disabled_plugins = {
+        "gzip", "tarPlugin", "tohtml", "tutor", "zipPlugin"
+      }
+    }
+  },
+  
+  -- Reduce startup noise
+  checker = { enabled = false },
+  change_detection = { enabled = false },
 })
 
--- Carrega specs de plugins adicionais
-load("plugins.which-key")     -- mapeamentos avançados
-load("plugins.which-key-lsp") -- integração LSP com which-key
+emergency_log("Lazy.nvim setup completed")
 
--- Carrega infra do model context protocol
-require("infra.mcp").setup()
-
-
--- Opcional: carregar automaticamente todos os plugins em lua/plugins
--- for _, file in ipairs(vim.fn.readdir(vim.fn.stdpath('config') .. '/lua/plugins')) do
---   local mod = file:match("(.+)%.lua$")
---   if mod ~= 'lazy' then load('plugins.' .. mod) end
--- end
-
--- Sinaliza fim do carregamento
-if debug_mod then debug_mod.info(log_ns, "Configuração Neovim totalmente carregada.") end
-logger.info(log_ns, "Startup completo.")
-
--- Medição de performance de startup
-local startup_end = vim.loop.hrtime()
-local elapsed_ms = (startup_end - startup_start) / 1e6
-if config.performance_log and logger_mod and logger_mod.get_buffer then
-  local buf = logger_mod.get_buffer()
-  buf[#buf + 1] = string.format("[PERF] [%s] Startup completed in %.2fms\n", log_ns, elapsed_ms)
+-- 7. LOAD CORE MODULES (after lazy is working)
+-- Load basic options first (no dependencies)
+local options_ok = safe_require("core.options")
+if options_ok then
+  emergency_log("Core options loaded")
 end
 
+-- Load autocmds (minimal dependencies)
+local autocmds_ok = safe_require("core.autocmds")
+if autocmds_ok then
+  emergency_log("Core autocmds loaded")
+end
+
+-- Load keymaps (may depend on plugins being available)
+local keymaps_ok = safe_require("core.keymaps")
+if keymaps_ok then
+  emergency_log("Core keymaps loaded")
+end
+
+-- 8. LOAD DEBUG SYSTEM LAST (after everything else works)
+vim.api.nvim_create_autocmd("User", {
+  pattern = "VeryLazy",
+  callback = function()
+    -- Try to load debug system after everything else is stable
+    local debug_ok = safe_require("core.debug")
+    if debug_ok then
+      emergency_log("Debug system loaded (deferred)")
+    else
+      emergency_log("Debug system failed - continuing without it", "WARN")
+    end
+    
+    -- Load appearance/themes
+    local appearance_ok = safe_require("core.appearance")
+    if appearance_ok then
+      emergency_log("Appearance settings loaded")
+    end
+  end,
+})
+
+-- 9. INSTALL TREESITTER PARSERS ON FIRST RUN
+vim.api.nvim_create_autocmd("VimEnter", {
+  once = true,
+  callback = function()
+    vim.schedule(function()
+      -- Check if lua parser exists
+      local parser_path = vim.fn.stdpath("data") .. "/lazy/nvim-treesitter/parser/lua.so"
+      if not vim.loop.fs_stat(parser_path) then
+        emergency_log("Installing Lua treesitter parser...")
+        vim.cmd("TSInstall lua")
+      end
+    end)
+  end,
+})
+
+emergency_log("Neovim initialization completed")

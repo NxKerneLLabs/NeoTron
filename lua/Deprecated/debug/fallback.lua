@@ -1,4 +1,4 @@
--- lua/core/debug/fallback.lua
+--- lua/core/debug/fallback.lua
 local fallback = {}
 local levels = { "DEBUG", "INFO", "WARN", "ERROR" }
 for _, lvl in ipairs(levels) do
@@ -8,3 +8,4 @@ for _, lvl in ipairs(levels) do
   end
 end
 return fallback
+

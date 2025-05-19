@@ -1,12 +1,12 @@
 -- lua/core/appearance.lua
--- Configurações de aparência e interface do Neovim
-
-local debug = require("core.debug.logger")
-local logger = debug
 local opt = vim.opt
 local g = vim.g
 
-logger.info("Carregando configurações de aparência (lua/core/appearance.lua)...")
+-- Em algum arquivo de cores (ex: core/appearance.lua)
+vim.api.nvim_set_hl(0, "DashboardHeader", { fg = "#89B4FA", bold = true })
+vim.api.nvim_set_hl(0, "DashboardSuggestion", { fg = "#94E2D5", italic = true })
+vim.api.nvim_set_hl(0, "DashboardError", { fg = "#F38BA8" })
+
 
 -- Numeração
 opt.number = true          -- Mostra números de linha
@@ -24,7 +24,7 @@ opt.signcolumn = "yes"    -- Coluna de sinais sempre visível
 -- Colunas de limite
 opt.colorcolumn = "80,120" -- Linhas verticais nas colunas 80 e 120
 
--- Modo e linha de comando
+
 opt.showmode = false       -- Plugins cuidam de mostrar modo
 opt.cmdheight = 1          -- Altura da linha de comando
 
@@ -52,5 +52,4 @@ opt.clipboard = "unnamedplus" -- Usa clipboard do sistema
 -- Menu de autocompletar
 opt.pumheight = 10         -- Altura do popup
 
-logger.info("Configurações de aparência carregadas e aplicadas.")
 

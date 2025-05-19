@@ -75,8 +75,7 @@ function M.inspect_state(namespace, context_msg)
   if fh then
     local data = uv.fs_read(fh, 65536, 0)
     uv.fs_close(fh)
-    for line in data:gmatch("[^
-]+") do
+    for line in data:gmatch("[^]+") do
       if line:match("^%s*(tun%d+|tap%d+):") then vpn = true break end
     end
   end
@@ -115,8 +114,7 @@ function M.inspect_state(namespace, context_msg)
     (#mitm_msgs>0) and ("MITM: " .. table.concat(mitm_msgs, "; ")),
   }
   -- Filter nil parts
-  local msg = table.concat(vim.tbl_filter(function(v) return v end, parts), "
-")
+  local msg = table.concat(vim.tbl_filter(function(v) return v end, parts), "")
 
   -- Emit
   logger.info(namespace, msg)
@@ -158,7 +156,7 @@ function M.start_dashboard(port)
 
     -- Read HTTP/WebSocket request
     local req = client:read_start(function() end)
-(128, function(err)
+    (128, function(err)
     assert(not err, err)
     local client = server:accept()
     client:settimeout(1000)
@@ -243,7 +241,7 @@ end)
     local payload = vim.fn.json_encode(state)
     -- Write HTTP response
     local res = {
-      "HTTP/1.1 200 OK", 
+      "HTTP/1.1 200 OK",
       "Content-Type: application/json; charset=UTF-8",
       "Content-Length: " .. tostring(#payload),
       "Connection: close", "", payload

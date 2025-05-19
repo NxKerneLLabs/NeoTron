@@ -1,15 +1,144 @@
 -- nvim/lua/plugins/cmp.lua
--- Plugin specifications for nvim-cmp, snippets, and AI assistants.
+local M = {}
 
-local fallback = require("core.debug.fallback")
-local ok_dbg, dbg = pcall(require, "core.debug.logger")
-local logger = (ok_dbg and dbg.get_logger and dbg.get_logger("plugins.cmp")) or fallback
-  return {
-    info  = function(m) print("INFO ["..name.."]: "..m) end,
-    warn  = function(m) print("WARN ["..name.."]: "..m) end,
-    error = function(m) print("ERROR ["..name.."]: "..m) end,
-    debug = function(m) print("DEBUG ["..name.."]: "..m) end,
+-- Sistema de logging robusto
+local logger
+do
+  local ok, dbg = pcall(require, "core.debug.logger")
+  if ok and dbg and dbg.get_logger then
+    logger = dbg.get_logger("plugins.cmp")
+  else
+    logger = {
+      info = function(m) print("[CMP] INFO: "..m) end,
+      warn = function(m) print("[CMP] WARN: "..m) end,
+      error = function(m) print("[CMP] ERROR: "..m) end,
+      debug = function(m) print("[CMP] DEBUG: "..m) end
+    }
+    logger.warn("core.debug.logger não encontrado. Usando fallback.")
+  end
+end
+
+-- Configuração do LuaSnip
+local function setup_luasnip()
+  local ok, luasnip = pcall(require, "luasnip")
+  if not ok then
+    logger.error("LuaSnip não carregado: "..tostring(luasnip))
+    return nil
+  end
+
+  local loader_ok, loader = pcall(require, "luasnip.loaders.from_vscode")
+  if loader_ok then
+    loader.lazy_load()
+    loader.lazy_load({ paths = { vim.fn.stdpath("config").."/snippets" } })
+    logger.info("Snippets carregados")
+  else
+    logger.warn("Loader de snippets não encontrado")
+  end
+
+  return luasnip
+end
+
+-- Configuração principal do cmp
+function M.setup()
+  local cmp_ok, cmp = pcall(require, "cmp")
+  if not cmp_ok then
+    logger.error("Falha ao carregar nvim-cmp: "..tostring(cmp))
+    return
+  end
+
+  local luasnip = setup_luasnip()
+  local lspkind_ok, lspkind = pcall(require, "lspkind")
+  local copilot_ok = pcall(require, "copilot_cmp")
+
+  -- Configuração de formatação
+  local format
+  if lspkind_ok then
+    format = lspkind.cmp_format({
+      mode = "symbol_text",
+      maxwidth = 50,
+      menu = {
+        buffer = "[Buffer]",
+        nvim_lsp = "[LSP]",
+        luasnip = "[Snip]",
+        path = "[Path]",
+        copilot = "[AI]"
+      }
+    })
+  else
+    format = function(entry, item)
+      item.menu = "[" .. entry.source.name .. "]"
+      return item
+    end
+    logger.warn("lspkind não disponível - usando formatação simples")
+  end
+
+  -- Fontes de completamento
+  local sources = {
+    { name = "copilot", group_index = 1 },
+    { name = "nvim_lsp", group_index = 2 },
+    { name = "luasnip", group_index = 2 },
+    { name = "buffer", group_index = 3 },
+    { name = "path", group_index = 3 }
   }
+
+  -- Mapeamentos
+  local mappings = cmp.mapping.preset.insert({
+    ["<C-b>"] = cmp.mapping.scroll_docs(-4),
+    ["<C-f>"] = cmp.mapping.scroll_docs(4),
+    ["<C-Space>"] = cmp.mapping.complete(),
+    ["<C-e>"] = cmp.mapping.abort(),
+    ["<CR>"] = cmp.mapping.confirm({ select = true }),
+    ["<Tab>"] = cmp.mapping(function(fallback)
+      if cmp.visible() then
+        cmp.select_next_item()
+      elseif luasnip and luasnip.expand_or_jumpable() then
+        luasnip.expand_or_jump()
+      else
+        fallback()
+      end
+    end, { "i", "s" }),
+    ["<S-Tab>"] = cmp.mapping(function(fallback)
+      if cmp.visible() then
+        cmp.select_prev_item()
+      elseif luasnip and luasnip.jumpable(-1) then
+        luasnip.jump(-1)
+      else
+        fallback()
+      end
+    end, { "i", "s" }),
+  })
+
+  -- Configuração principal
+  cmp.setup({
+    snippet = {
+      expand = function(args)
+        if luasnip then
+          luasnip.lsp_expand(args.body)
+        else
+          logger.warn("Tentativa de expandir snippet sem LuaSnip")
+        end
+      end,
+    },
+    mapping = mappings,
+    formatting = { format = format },
+    sources = cmp.config.sources(sources),
+    window = {
+      completion = cmp.config.window.bordered(),
+      documentation = cmp.config.window.bordered(),
+    },
+    experimental = { ghost_text = true }
+  })
+
+  -- Configuração para linha de comando
+  cmp.setup.cmdline(":", {
+    mapping = cmp.mapping.preset.cmdline(),
+    sources = cmp.config.sources({
+      { name = "cmdline" },
+      { name = "path" }
+    })
+  })
+
+  logger.info("nvim-cmp configurado com sucesso")
 end
 
 return {
@@ -27,157 +156,14 @@ return {
       {
         "L3MON4D3/LuaSnip",
         version = "v2.*",
-        build   = "make install_jsregexp",
+        build = "make install_jsregexp",
         dependencies = { "rafamadriz/friendly-snippets" },
         config = function()
-          local logger
-          local dbg_ok, dbg = pcall(require, "core.debug.logger") -- Caminho completo para o logger
-          if dbg_ok and dbg and dbg.get_logger then
-            logger = dbg.get_logger("plugins.luasnip")
-          else
-            logger = get_fallback_logger("LuaSnip")
-            logger.error("core.debug.logger não encontrado. Usando fallback para LuaSnip.")
-          end
-
-          logger.info("Configuring LuaSnip…")
-          local ls_ok, luasnip = pcall(require, "luasnip")
-          if not ls_ok or not luasnip then
-            logger.error("Failed to load 'luasnip'. Snippet setup aborted. Error: " .. tostring(luasnip))
-            return
-          end
-
-          local loader_ok, loader = pcall(require, "luasnip.loaders.from_vscode")
-          if loader_ok and loader then
-            loader.lazy_load()
-            -- Carrega snippets da tua pasta de configuração pessoal também
-            loader.lazy_load({ paths = { vim.fn.stdpath("config").."/snippets" } })
-            logger.info("LuaSnip snippets loaded.")
-          else
-            logger.warn("VSCode snippet loader not found: "..tostring(loader))
-          end
-        end,
-      },
-    },
-
-    config = function()
-      local logger
-      -- Corrigido: Usar core.debug.logger para consistência
-      local dbg_ok, dbg = pcall(require, "core.debug.logger")
-      if dbg_ok and dbg and dbg.get_logger then
-        logger = dbg.get_logger("plugins.cmp.config")
-      else
-        logger = get_fallback_logger("CMP_FB")
-        logger.error("core.debug.logger não encontrado. Usando fallback para nvim-cmp.")
-      end
-
-      logger.info("Configuring nvim-cmp…")
-      local cmp_ok, cmp = pcall(require, "cmp")
-      if not cmp_ok or not cmp then
-        logger.error("Failed to load 'cmp': "..tostring(cmp))
-        return
-      end
-
-      local ls_ok, luasnip = pcall(require, "luasnip")
-      if not ls_ok then logger.warn("'luasnip' not found: "..tostring(luasnip)) end
-
-      local lspkind_ok, lspkind = pcall(require, "lspkind")
-      if not lspkind_ok then logger.warn("'lspkind' not found: "..tostring(lspkind)) end
-
-      -- copilot_cmp é uma dependência, mas a sua configuração é feita no plugin do Copilot
-      -- Apenas verificamos se está disponível para a fonte.
-      local cp_ok, _ = pcall(require, "copilot_cmp") -- Não precisamos da variável copilot_cmp aqui
-      if not cp_ok then logger.warn("'copilot_cmp' source might not be available if Copilot plugin is not configured to use it.") end
-
-      local function check_backspace()
-        local col = vim.fn.col('.') - 1
-        return col == 0 or vim.fn.getline('.'):sub(col, col):match('%s')
-      end
-
-      local sources = cmp.config.sources({
-        { name = "copilot",  group_index = 1, priority = 100, keyword_length = 1, max_item_count = 3 },
-        { name = "nvim_lsp", group_index = 2, priority = 90 },
-        { name = "luasnip",  group_index = 2, priority = 80, keyword_length = 2 },
-        { name = "buffer",   group_index = 3, priority = 70, keyword_length = 3 },
-        { name = "path",     group_index = 3, priority = 60 },
-      })
-
-      local formatter
-      if lspkind_ok and lspkind and lspkind.cmp_format then
-        formatter = lspkind.cmp_format({
-          mode            = "symbol_text",
-          maxwidth        = 50,
-          ellipsis_char   = "...",
-          show_labelDetails = true,
-          menu = {
-            buffer   = "[Buffer]",
-            nvim_lsp = "[LSP]",
-            luasnip  = "[Snippet]",
-            path     = "[Path]",
-            cmdline  = "[Cmd]",
-            copilot  = "[Copilot]",
-          },
-        })
-      else
-        formatter = function(entry, vim_item)
-          vim_item.kind = (vim_item.kind or "?") .. " " .. entry.source.name
-          return vim_item
+          setup_luasnip()
         end
-        logger.warn("lspkind.cmp_format not available. Using basic formatter.")
-      end
-
-      cmp.setup({
-        snippet = {
-          expand = function(args)
-            if ls_ok and luasnip then
-              luasnip.lsp_expand(args.body)
-            else
-              logger.warn("LuaSnip unavailable for snippet expansion.")
-            end
-          end,
-        },
-        mapping = cmp.mapping.preset.insert({
-          ["<C-k>"] = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Select }),
-          ["<C-j>"] = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Select }),
-          ["<C-b>"] = cmp.mapping(cmp.mapping.scroll_docs(-4), { "i", "c" }),
-          ["<C-f>"] = cmp.mapping(cmp.mapping.scroll_docs(4), { "i", "c" }),
-          ["<C-Space>"] = cmp.mapping(cmp.mapping.complete(), { "i", "c" }),
-          ["<C-e>"] = cmp.mapping({ i = cmp.mapping.abort(), c = cmp.mapping.close() }),
-          ["<CR>"] = cmp.mapping.confirm({ select = true }),
-          ["<Tab>"] = cmp.mapping(function(fallback)
-            if cmp.visible() then
-              cmp.select_next_item({ behavior = cmp.SelectBehavior.Insert })
-            elseif ls_ok and luasnip and luasnip.expand_or_jumpable() then
-              luasnip.expand_or_jump()
-            elseif check_backspace() then
-              fallback()
-            else
-              fallback()
-            end
-          end, { "i", "s" }),
-          ["<S-Tab>"] = cmp.mapping(function(fallback)
-            if cmp.visible() then
-              cmp.select_prev_item({ behavior = cmp.SelectBehavior.Insert })
-            elseif ls_ok and luasnip and luasnip.jumpable(-1) then
-              luasnip.jump(-1)
-            else
-              fallback()
-            end
-          end, { "i", "s" }),
-        }),
-        formatting = { format = formatter },
-        sources = sources,
-        window = {
-          completion    = cmp.config.window.bordered(),
-          documentation = cmp.config.window.bordered(),
-        },
-        experimental = { ghost_text = true },
-      })
-
-      cmp.setup.cmdline(":", { mapping = cmp.mapping.preset.cmdline(), sources = cmp.config.sources({ { name = "cmdline" } }, { { name = "path" } }) })
-      cmp.setup.cmdline("/", { mapping = cmp.mapping.preset.cmdline(), sources = { { name = "buffer" } } })
-
-      logger.info("nvim-cmp configured successfully.")
-    end,
-  },
+      }
+    },
+    config = M.setup
+  }
 }
 
