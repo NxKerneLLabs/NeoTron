@@ -80,14 +80,17 @@ jobs:
       - name: Terraform Plan
         id: plan
         if: github.event_name == 'pull_request'
-        run: terraform plan -out=tfplan
+        run: |
+          terraform plan -no-color -out=tfplan | tee plan.txt
         continue-on-error: true
 
-      - name: Comment Plan
+      - name: Comment Terraform Plan
         if: github.event_name == 'pull_request'
-        uses: marocchino/gha-comment@v1
+        uses: peter-evans/create-or-update-comment@v4
         with:
-          path: tfplan
+          token: ${{ secrets.GITHUB_TOKEN }}
+          file: plan.txt
+          header: "### Terraform Plan"
 
       - name: Terraform Apply
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -98,7 +101,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: terraform-plan
-          path: google-cloud-ai/tfplan
+          path: |
+            google-cloud-ai/tfplan
+            google-cloud-ai/plan.txt
 
       - name: Clean up credentials file
         if: always()
