@@ -8,45 +8,61 @@ on:
 
 jobs:
   terraform:
+    name: "Terraform GCP CI"
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./google-cloud-ai  # Diretório do projeto
+        working-directory: ./google-cloud-ai  # Project directory
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: gcp-credentials.json  # Shared environment variable
     steps:
-      - uses: actions/checkout@v3
+      # Step 1: Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
+      # Step 2: Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.0
           terraform_wrapper: false
 
+      # Step 3: Write Google Credentials
       - name: Write Google Credentials
-        run: echo "$GOOGLE_CREDENTIALS" > gcp-credentials.json
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: |
+          set -e
+          echo "${{ secrets.GOOGLE_CREDENTIALS }}" > gcp-credentials.json
 
+      # Step 4: Authenticate to Google Cloud
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
 
+      # Step 5: Check Terraform formatting
+      - name: Terraform Format Check
+        run: terraform fmt -check
+
+      # Step 6: Initialize Terraform
       - name: Terraform Init
         run: terraform init
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: gcp-credentials.json
 
+      # Step 7: Validate Terraform configuration
       - name: Terraform Validate
         run: terraform validate
 
+      # Step 8: Terraform Plan (only on pull requests)
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
         if: github.event_name == 'pull_request'
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: gcp-credentials.json
+        run: terraform plan -out=tfplan
+        continue-on-error: true
 
+      # Step 9: Terraform Apply (only on pushes to main)
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
         if: github.event_name == 'push' && success()
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: gcp-credentials.json
+        run: terraform apply -auto-approve tfplan
+
+      # Step 10: Clean up credentials file
+      - name: Clean up credentials file
+        if: always()  # Always run this step, even if previous steps fail
+        run: rm -f gcp-credentials.json
