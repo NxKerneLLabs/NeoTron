@@ -66,15 +66,24 @@ jobs:
         run: |
           set -euo pipefail
           echo "Writing GCP key to $GOOGLE_APPLICATION_CREDENTIALS"
-          echo "${{ secrets.GCP_KEY }}" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          echo "${{ secrets.GOOGLE_CREDENTIALS }}" > "$GOOGLE_APPLICATION_CREDENTIALS"
+
+      - name: Debug GCP credentials file
+        run: |
+          if [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+            echo "Credentials file exists at $GOOGLE_APPLICATION_CREDENTIALS."
+            ls -l "$GOOGLE_APPLICATION_CREDENTIALS"
+          else
+            echo "Credentials file not found at $GOOGLE_APPLICATION_CREDENTIALS."
+          fi
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_KEY }}
+          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
 
       - name: Terraform Format Check
-        run: terraform fmt -check || true  # Adicionado || true para não falhar o workflow em caso de erro
+        run: terraform fmt -check || true
 
       - name: Terraform Init
         run: terraform init || echo "Terraform init failed, check configuration and credentials"
@@ -83,7 +92,7 @@ jobs:
         uses: aquasecurity/tfsec-action@v1.0.3
         with:
           additional_args: --concise-output
-        continue-on-error: true  # Para não bloquear o workflow se tfsec falhar
+        continue-on-error: true
 
       - name: Terraform Validate
         run: terraform validate || true
