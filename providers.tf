@@ -8,7 +8,8 @@ terraform {
 }
 
 provider "google" {
-  project = "377604913138-29iibpphmcnvg4464jmfg2heu9kcluf9.apps.googleusercontent.com"
+  project = "neotron-460405 "
   region  = "us-central1" # Ajuste conforme sua preferência de região
+  credentials = file("~/.gcp/neotron-460405-1f9de633812b.json") # Caminho para o arquivo JSON
 }
 
