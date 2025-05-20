@@ -1,6 +1,3 @@
-# Arquivos e pastas do Terraform
-.terraform/
-
 # Arquivos temporários e backups
 *.swp
 *.bak
