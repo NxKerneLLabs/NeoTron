@@ -19,7 +19,7 @@ jobs:
       run:
         working-directory: google-cloud-ai
     env:
-      GOOGLE_APPLICATION_CREDENTIALS: .gcpneotron-460405-1f9de633812b.json
+      GOOGLE_APPLICATION_CREDENTIALS: google-cloud-ai/gcp-credentials.json
 
     steps:
       - name: Checkout repository
@@ -27,6 +27,11 @@ jobs:
         with:
           submodules: true
           fetch-depth: 0
+
+      - name: Debug working directory
+        run: |
+          pwd
+          ls -la
 
       - name: Clean nested Git folder
         run: |
@@ -72,7 +77,9 @@ jobs:
         run: terraform init
 
       - name: Run tfsec security scan
-        uses: aquasecurity/tfsec@v1.28.1
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          additional_args: --concise-output
 
       - name: Terraform Validate
         run: terraform validate
@@ -92,8 +99,12 @@ jobs:
           file: plan.txt
           header: "### Terraform Plan"
 
-      - name: Terraform Apply
+      - name: Terraform Plan (for Apply)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: terraform plan -no-color -out=tfplan
+
+      - name: Terraform Apply
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && success()
         run: terraform apply -auto-approve tfplan
 
       - name: Upload plan artifact
@@ -107,5 +118,11 @@ jobs:
 
       - name: Clean up credentials file
         if: always()
-        run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
+        run: |
+          if [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+            rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
+            echo "Credentials file deleted."
+          else
+            echo "Credentials file not found at $GOOGLE_APPLICATION_CREDENTIALS."
+          fi
 
