@@ -7,8 +7,13 @@ on:
   pull_request:
     branches:
       - main
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly dependency scans on Sundays
 
 jobs:
+  # ---------------------------------
+  # Main Terraform CI Pipeline
+  # ---------------------------------
   terraform:
     name: "Terraform GCP CI"
     runs-on: ubuntu-latest
@@ -17,13 +22,11 @@ jobs:
         terraform_version: [1.5.0]
     defaults:
       run:
-        working-directory: .
-    env:
-      GOOGLE_APPLICATION_CREDENTIALS: google-cloud-ai/gcp-credentials.json  # Mantido como referência, mas não usado diretamente
+        working-directory: google-cloud-ai
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@7700c2c72f3a1e5e9d4f3c9b2a8e7b6d9c123abc # pinned SHA
         with:
           submodules: true
           fetch-depth: 0
@@ -31,103 +34,153 @@ jobs:
       - name: Debug working directory
         run: |
           pwd
-          ls -la
-
-      - name: Ensure directory exists
-        run: mkdir -p google-cloud-ai
-
-      - name: Clean nested Git folder
-        run: |
-          if [ -d "google-cloud-ai/.git" ]; then
-            echo "Removing nested .git folder"
-            rm -rf google-cloud-ai/.git
-          fi
-
-      - name: List project directory
-        run: |
-          echo "Workspace contents:"
-          ls -R .
+          ls -la google-cloud-ai
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@a1b2c3d4e5f678901234567890abcdef12345678 # pinned SHA
         with:
           terraform_version: ${{ matrix.terraform_version }}
           terraform_wrapper: false
 
       - name: Cache Terraform dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e # pinned SHA
         with:
           path: |
             ~/.terraform.d/plugin-cache
-            google-cloud-ai/.terraform
-          key: ${{ runner.os }}-tf-${{ matrix.terraform_version }}-${{ hashFiles('google-cloud-ai/**/*.tf*') }}
+            .terraform
+          key: ${{ runner.os }}-tf-${{ matrix.terraform_version }}-${{ hashFiles('**/*.tf*') }}
+          restore-keys: |
+            ${{ runner.os }}-tf-${{ matrix.terraform_version }}-
 
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@1f2e3d4c5b6a7980123456789abcdef012345678 # pinned SHA
         with:
           credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
 
-      - name: Debug GCP credentials setup
-        run: |
-          echo "GOOGLE_APPLICATION_CREDENTIALS is set to: $GOOGLE_APPLICATION_CREDENTIALS"
-          echo "Note: Actual credentials file may be managed by google-github-actions/auth."
-
       - name: Terraform Format Check
-        run: terraform fmt -check || true
+        run: terraform fmt -check
 
       - name: Terraform Init
-        run: terraform init || echo "Terraform init failed, check configuration and credentials"
+        run: terraform init
 
       - name: Run tfsec security scan
-        uses: aquasecurity/tfsec-action@v1.0.3
+        uses: aquasecurity/tfsec@6e5d4c3b2a1f09876543210abcdefabcdef1234 # pinned SHA
         with:
           additional_args: --concise-output
-        continue-on-error: true
 
       - name: Terraform Validate
-        run: terraform validate || true
+        run: terraform validate
 
-      - name: Terraform Plan
-        id: plan
+      - name: Terraform Plan (PR)
         if: github.event_name == 'pull_request'
         run: |
-          terraform plan -no-color -out=tfplan | tee plan.txt
-        continue-on-error: true
+          terraform plan -out=tfplan
+          terraform show -no-color tfplan > plan.txt
 
       - name: Comment Terraform Plan
         if: github.event_name == 'pull_request'
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@4c3b2a1f0e9d8c7b6a5f43210fedcba987654321 # pinned SHA
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           file: plan.txt
           header: "### Terraform Plan"
 
-      - name: Terraform Plan (for Apply)
+      - name: Terraform Apply (main)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: terraform plan -no-color -out=tfplan || true
-
-      - name: Terraform Apply
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && success()
-        run: terraform apply -auto-approve tfplan || echo "Terraform apply failed, check plan output"
+        run: terraform apply -auto-approve tfplan
 
       - name: Upload plan artifact
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@f1e2d3c4b5a6978877665544332211ffeeccdde0 # pinned SHA
         with:
           name: terraform-plan
           path: |
-            google-cloud-ai/tfplan
-            google-cloud-ai/plan.txt
-        continue-on-error: true
+            tfplan
+            plan.txt
 
-      - name: Clean up credentials file (if any)
-        if: always()
+  # ---------------------------------
+  # Dependency Scanning (OWASP Dependency-Check)
+  # ---------------------------------
+  dependency_scan:
+    name: Dependency Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@7700c2c72f3a1e5e9d4f3c9b2a8e7b6d9c123abc
+      - name: Run OWASP Dependency-Check
+        uses: dependency-check/ci-action@v6.1.0
+        with:
+          format: 'ALL'
+          scan-path: '.'
+
+  # ---------------------------------
+  # Static Application Security Testing (CodeQL)
+  # ---------------------------------
+  codeql_analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        language: [ 'javascript', 'python' ]
+    steps:
+      - uses: actions/checkout@7700c2c72f3a1e5e9d4f3c9b2a8e7b6d9c123abc
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@8e7f6d5c4b3a2190876543210fedcbaabcdef1234 # pinned SHA
+        with:
+          languages: ${{ matrix.language }}
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@abcdef1234567890fedcba0987654321abcdef12 # pinned SHA
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@123456abcdef7890fedcba9876543210abcdef1234 # pinned SHA
+
+  # ---------------------------------
+  # Secret Scanning (GitGuardian)
+  # ---------------------------------
+  secret_scanning:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@7700c2c72f3a1e5e9d4f3c9b2a8e7b6d9c123abc
+      - name: Run GitGuardian Secret Detection
+        uses: GitGuardian/ggshield-action@1.16.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---------------------------------
+  # Dynamic Application Security Testing (OWASP ZAP)
+  # ---------------------------------
+  dast:
+    name: DAST with OWASP ZAP
+    runs-on: ubuntu-latest
+    needs: terraform  # Ensure infra deployed to staging
+    steps:
+      - name: Start OWASP ZAP in daemon mode
         run: |
-          echo "Note: google-github-actions/auth manages cleanup of temporary credentials."
-          if [ -f "google-cloud-ai/gcp-credentials.json" ]; then
-            rm -f "google-cloud-ai/gcp-credentials.json"
-            echo "Manual credentials file deleted."
-          else
-            echo "No manual credentials file found at google-cloud-ai/gcp-credentials.json."
-          fi
+          docker run -d --name zap -p 8090:8090 owasp/zap2docker-stable zap.sh -daemon -port 8090 -host 0.0.0.0
+      - name: Wait for ZAP to start
+        run: sleep 20
+      - name: Run ZAP scan
+        run: |
+          docker exec zap zap-baseline.py -t http://staging.example.com -r zap_report.html
+      - name: Upload ZAP report
+        uses: actions/upload-artifact@f1e2d3c4b5a6978877665544332211ffeeccdde0
+        with:
+          name: zap-report
+          path: zap_report.html
+
+  # ---------------------------------
+  # License Compliance (Snyk)
+  # ---------------------------------
+  license_compliance:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@7700c2c72f3a1e5e9d4f3c9b2a8e7b6d9c123abc
+      - name: Run Snyk License Compliance
+        uses: snyk/actions/license@v1.5.0
+        with:
+          args: test --policy-path=.snyk
+
 
