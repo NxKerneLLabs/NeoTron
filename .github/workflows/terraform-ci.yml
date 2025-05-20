@@ -31,10 +31,13 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      # 2. (Optional) Remove nested .git to avoid conflicts
+      # 2. Remove nested .git folder (unconditionally, for safety)
       - name: Clean nested Git folder
-        if: exists('google-cloud-ai/.git')
-        run: rm -rf google-cloud-ai/.git
+        run: |
+          if [ -d "google-cloud-ai/.git" ]; then
+            echo "Removing nested .git folder"
+            rm -rf google-cloud-ai/.git
+          fi
 
       # 3. List project directory for debugging
       - name: List project directory
