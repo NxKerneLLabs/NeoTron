@@ -1,1 +1,24 @@
+# Arquivos e pastas do Terraform
 .terraform/
+
+# Arquivos temporários e backups
+*.swp
+*.bak
+*.swo
+
+# Arquivos de log e temporários
+/tmp/*
+*.log
+
+# Arquivos de dados sensíveis
+*.key
+*.token
+*.gpg
+
+# Pastas de plugins ou caches
+.git
+.cache
+undo/
+backup/
+swap/
+
