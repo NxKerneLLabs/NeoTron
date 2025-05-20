@@ -84,7 +84,7 @@ jobs:
 
       # 10. Static Security Scan (tfsec)
       - name: Run tfsec security scan
-        uses: aquasecurity/tfsec-action@v1
+        uses: aquasecurity/tfsec@v1.28.1
 
       # 11. Terraform Validate
       - name: Terraform Validate
@@ -98,11 +98,11 @@ jobs:
         continue-on-error: true
 
       # 13. Comment Plan on PR
-      - name: Comment plan
+    -   name: Comment plan
         if: github.event_name == 'pull_request'
-        uses: marocchino/gha-comment-plan@v4
+        uses: marocchino/gha-comment@v1
         with:
-          path: tfplan
+        path: tfplan
 
       # 14. Terraform Apply (main)
       - name: Terraform Apply
@@ -112,10 +112,10 @@ jobs:
       # 15. Upload plan artifact (for PRs)
       - name: Upload plan artifact
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan
-          path: google-cloud-ai/tfplan
+        name: terraform-plan
+        path: google-cloud-ai/tfplan
 
       # 16. Clean up GCP key file
       - name: Clean up credentials file
