@@ -31,7 +31,7 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      # 2. Remove nested .git folder (unconditionally, for safety)
+      # 2. (Optional) Remove nested .git to avoid conflicts
       - name: Clean nested Git folder
         run: |
           if [ -d "google-cloud-ai/.git" ]; then
@@ -79,7 +79,6 @@ jobs:
         run: terraform fmt -check
 
       # 9. Terraform Init
-      - name: Terraform Init
         run: terraform init
 
       # 10. Static Security Scan (tfsec)
@@ -98,11 +97,11 @@ jobs:
         continue-on-error: true
 
       # 13. Comment Plan on PR
-    -   name: Comment plan
+      - name: Comment plan
         if: github.event_name == 'pull_request'
         uses: marocchino/gha-comment@v1
         with:
-        path: tfplan
+          path: tfplan
 
       # 14. Terraform Apply (main)
       - name: Terraform Apply
@@ -114,8 +113,8 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-        name: terraform-plan
-        path: google-cloud-ai/tfplan
+          name: terraform-plan
+          path: google-cloud-ai/tfplan
 
       # 16. Clean up GCP key file
       - name: Clean up credentials file
