@@ -1,25 +1,19 @@
-provider "azurerm" {
-  features {}
+# Habilitar APIs necessárias no GCP
+resource "google_project_service" "aiplatform" {
+  project = "377604913138-29iibpphmcnvg4464jmfg2heu9kcluf9.apps.googleusercontent.com"
+  service = "aiplatform.googleapis.com"
+  disable_dependent_services = true
 }
 
-module "cognitive_services" {
-  source              = "./modules/cognitive-services"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  cognitive_service_name = var.cognitive_service_name
+resource "google_project_service" "vision" {
+  project = "377604913138-29iibpphmcnvg4464jmfg2heu9kcluf9.apps.googleusercontent.com"
+  service = "vision.googleapis.com"
+  disable_dependent_services = true
 }
 
-module "app_service" {
-  source              = "./modules/app-service"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  app_service_name    = var.app_service_name
+# Configurar um bucket no Google Cloud Storage (opcional, para armazenar modelos ou dados)
+resource "google_storage_bucket" "neotron_bucket" {
+  name          = "neotron-data-bucket"
+  location      = "US-CENTRAL1"
+  force_destroy = true
 }
-
-module "monitoring" {
-  source              = "./modules/monitoring"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  app_service_id      = module.app_service.app_service_id
-}
-
