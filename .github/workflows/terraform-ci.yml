@@ -19,7 +19,7 @@ jobs:
       run:
         working-directory: .
     env:
-      GOOGLE_APPLICATION_CREDENTIALS: google-cloud-ai/gcp-credentials.json
+      GOOGLE_APPLICATION_CREDENTIALS: google-cloud-ai/gcp-credentials.json  # Mantido como referência, mas não usado diretamente
 
     steps:
       - name: Checkout repository
@@ -62,25 +62,15 @@ jobs:
             google-cloud-ai/.terraform
           key: ${{ runner.os }}-tf-${{ matrix.terraform_version }}-${{ hashFiles('google-cloud-ai/**/*.tf*') }}
 
-      - name: Write GCP credentials
-        run: |
-          set -euo pipefail
-          echo "Writing GCP key to $GOOGLE_APPLICATION_CREDENTIALS"
-          echo "${{ secrets.GOOGLE_CREDENTIALS }}" > "$GOOGLE_APPLICATION_CREDENTIALS"
-
-      - name: Debug GCP credentials file
-        run: |
-          if [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
-            echo "Credentials file exists at $GOOGLE_APPLICATION_CREDENTIALS."
-            ls -l "$GOOGLE_APPLICATION_CREDENTIALS"
-          else
-            echo "Credentials file not found at $GOOGLE_APPLICATION_CREDENTIALS."
-          fi
-
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      - name: Debug GCP credentials setup
+        run: |
+          echo "GOOGLE_APPLICATION_CREDENTIALS is set to: $GOOGLE_APPLICATION_CREDENTIALS"
+          echo "Note: Actual credentials file may be managed by google-github-actions/auth."
 
       - name: Terraform Format Check
         run: terraform fmt -check || true
@@ -130,13 +120,14 @@ jobs:
             google-cloud-ai/plan.txt
         continue-on-error: true
 
-      - name: Clean up credentials file
+      - name: Clean up credentials file (if any)
         if: always()
         run: |
-          if [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
-            rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
-            echo "Credentials file deleted."
+          echo "Note: google-github-actions/auth manages cleanup of temporary credentials."
+          if [ -f "google-cloud-ai/gcp-credentials.json" ]; then
+            rm -f "google-cloud-ai/gcp-credentials.json"
+            echo "Manual credentials file deleted."
           else
-            echo "Credentials file not found at $GOOGLE_APPLICATION_CREDENTIALS."
+            echo "No manual credentials file found at google-cloud-ai/gcp-credentials.json."
           fi
 
