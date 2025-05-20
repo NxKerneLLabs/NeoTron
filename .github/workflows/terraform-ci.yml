@@ -2,67 +2,120 @@ name: Terraform Deploy to GCP
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   terraform:
     name: "Terraform GCP CI"
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        terraform_version: [1.5.0]
     defaults:
       run:
-        working-directory: ./google-cloud-ai  # Project directory
+        # Ensure working directory points to your Terraform config
+        working-directory: google-cloud-ai
     env:
-      GOOGLE_APPLICATION_CREDENTIALS: gcp-credentials.json  # Shared environment variable
+      # Match your actual GCP key file name
+      GOOGLE_APPLICATION_CREDENTIALS: .gcpneotron-460405-1f9de633812b.json
+
     steps:
-      # Step 1: Checkout the repository
+      # 1. Checkout repository (with submodules if needed)
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          submodules: true
+          fetch-depth: 0
 
-      # Step 2: Setup Terraform
+      # 2. (Optional) Remove nested .git to avoid conflicts
+      - name: Clean nested Git folder
+        if: exists('google-cloud-ai/.git')
+        run: rm -rf google-cloud-ai/.git
+
+      # 3. List project directory for debugging
+      - name: List project directory
+        run: |
+          echo "Workspace contents:"
+          ls -R .
+
+      # 4. Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.5.0
+          terraform_version: ${{ matrix.terraform_version }}
           terraform_wrapper: false
 
-      # Step 3: Write Google Credentials
-      - name: Write Google Credentials
-        run: |
-          set -e
-          echo "${{ secrets.GOOGLE_CREDENTIALS }}" > gcp-credentials.json
+      # 5. Cache Terraform dependencies
+      - name: Cache Terraform dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            google-cloud-ai/.terraform
+          key: ${{ runner.os }}-tf-${{ matrix.terraform_version }}-${{ hashFiles('google-cloud-ai/**/*.tf*') }}
 
-      # Step 4: Authenticate to Google Cloud
+      # 6. Write GCP key file
+      - name: Write GCP credentials
+        run: |
+          set -euo pipefail
+          echo "Writing GCP key to $GOOGLE_APPLICATION_CREDENTIALS"
+          echo "${{ secrets.GCP_KEY }}" > "$GOOGLE_APPLICATION_CREDENTIALS"
+
+      # 7. Authenticate to Google Cloud
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
+          credentials_json: ${{ secrets.GCP_KEY }}
 
-      # Step 5: Check Terraform formatting
+      # 8. Terraform Format Check
       - name: Terraform Format Check
         run: terraform fmt -check
 
-      # Step 6: Initialize Terraform
+      # 9. Terraform Init
       - name: Terraform Init
         run: terraform init
 
-      # Step 7: Validate Terraform configuration
+      # 10. Static Security Scan (tfsec)
+      - name: Run tfsec security scan
+        uses: aquasecurity/tfsec-action@v1
+
+      # 11. Terraform Validate
       - name: Terraform Validate
         run: terraform validate
 
-      # Step 8: Terraform Plan (only on pull requests)
+      # 12. Terraform Plan (PR only)
       - name: Terraform Plan
+        id: plan
         if: github.event_name == 'pull_request'
         run: terraform plan -out=tfplan
         continue-on-error: true
 
-      # Step 9: Terraform Apply (only on pushes to main)
+      # 13. Comment Plan on PR
+      - name: Comment plan
+        if: github.event_name == 'pull_request'
+        uses: marocchino/gha-comment-plan@v4
+        with:
+          path: tfplan
+
+      # 14. Terraform Apply (main)
       - name: Terraform Apply
-        if: github.event_name == 'push' && success()
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve tfplan
 
-      # Step 10: Clean up credentials file
+      # 15. Upload plan artifact (for PRs)
+      - name: Upload plan artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform-plan
+          path: google-cloud-ai/tfplan
+
+      # 16. Clean up GCP key file
       - name: Clean up credentials file
-        if: always()  # Always run this step, even if previous steps fail
-        run: rm -f gcp-credentials.json
+        if: always()
+        run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
+
