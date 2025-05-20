@@ -22,3 +22,5 @@ undo/
 backup/
 swap/
 
+terraform.tfstate
+terraform.tfstate.backup
