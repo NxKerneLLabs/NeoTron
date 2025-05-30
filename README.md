@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🐧 Automatizando a Criação e Gerenciamento de Recursos na Azure Usando Apenas o Terminal
 
 ## ✍️ Introdução
@@ -1789,3 +1790,9 @@ az monitor metrics alert create \
 ### 💬 # Considerações Finais
 
 A automação de infraestrutura com foco em terminal e segurança permite escalar com confiança. O domínio da CLI, junto com boas práticas de IaC, CI/CD e monitoramento, forma a base de uma operação moderna, segura e eficiente na nuvem Azure.
+=======
+# Teste GCP
+# Teste GCP
+# Atualização para teste de workflow
+# Atualização para teste de workflow
+>>>>>>> ab43c81839a015e2a4d0ee425c51f789842627a2

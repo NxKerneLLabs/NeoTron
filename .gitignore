@@ -1,13 +1,16 @@
+<<<<<<< HEAD
+=======
+# Arquivos temporários e backups
+>>>>>>> ab43c81839a015e2a4d0ee425c51f789842627a2
 *.swp
 *.bak
+*.swo
+
 # Arquivos de log e temporários
 /tmp/*
 *.log
-*.swp
-*.swo
 
 # Arquivos de dados sensíveis
-secrets.lua
 *.key
 *.token
 *.gpg
@@ -19,6 +22,5 @@ undo/
 backup/
 swap/
 
-# Configs locais específicas
-local.lua
-
+terraform.tfstate
+terraform.tfstate.backup
