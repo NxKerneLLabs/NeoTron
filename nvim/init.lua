@@ -1,50 +1,19 @@
 -- ~/.config/nvim/init.lua
 -- Fixed initialization order
 
--- 1. BOOTSTRAP LAZY.NVIM FIRST (before anything else)
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not vim.loop.fs_stat(lazypath) then
-  vim.fn.system({
-    "git",
-    "clone",
-    "--filter=blob:none",
-    "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable",
-    lazypath,
-  })
-end
-vim.opt.rtp:prepend(lazypath)
+-- 1. Load initialization utilities
+local init_utils = require("core.init_utils")
 
--- 2. SET LEADERS IMMEDIATELY
-vim.g.mapleader = " "
-vim.g.maplocalleader = "\\"
+-- 2. Bootstrap lazy.nvim
+local lazypath = init_utils.bootstrap_lazy()
 
--- 3. DISABLE PROBLEMATIC PROVIDERS (prevents health warnings)
-vim.g.loaded_perl_provider = 0
-vim.g.loaded_ruby_provider = 0
+-- 3. Setup basic options
+init_utils.setup_basic_options()
 
--- 4. EMERGENCY LOGGING (works without any modules)
-local function emergency_log(msg, level)
-  vim.schedule(function()
-    local hl = level == "ERROR" and "ErrorMsg" or "WarningMsg"
-    vim.api.nvim_echo({{"[INIT] " .. msg, hl}}, true, {})
-  end)
-end
-
--- 5. SAFE REQUIRE WITH BETTER ERROR HANDLING
-local function safe_require(module_name)
-  local ok, result = pcall(require, module_name)
-  if not ok then
-    emergency_log("Failed to load " .. module_name .. ": " .. tostring(result), "ERROR")
-    return nil, result
-  end
-  return result, nil
-end
-
--- 6. SETUP LAZY.NVIM IMMEDIATELY (before core modules)
-local lazy_ok, lazy = safe_require("lazy")
+-- 4. Setup lazy.nvim
+local lazy_ok, lazy = init_utils.safe_require("lazy")
 if not lazy_ok then
-  emergency_log("CRITICAL: lazy.nvim failed to load!", "ERROR")
+  init_utils.emergency_log("CRITICAL: lazy.nvim failed to load!", "ERROR")
   return
 end
 
@@ -57,7 +26,7 @@ lazy.setup({
       build = ":TSUpdate",
       priority = 1000, -- Load first
       config = function()
-        local ts_ok, ts_config = safe_require("nvim-treesitter.configs")
+        local ts_ok, ts_config = init_utils.safe_require("nvim-treesitter.configs")
         if ts_ok then
           ts_config.setup({
             ensure_installed = { "lua", "vim", "vimdoc", "query" },
@@ -68,7 +37,7 @@ lazy.setup({
               additional_vim_regex_highlighting = false,
             },
           })
-          emergency_log("Treesitter configured successfully")
+          init_utils.emergency_log("Treesitter configured successfully")
         end
       end,
     },
@@ -99,48 +68,42 @@ lazy.setup({
   change_detection = { enabled = false },
 })
 
-emergency_log("Lazy.nvim setup completed")
+init_utils.emergency_log("Lazy.nvim setup completed")
 
--- 7. LOAD CORE MODULES (after lazy is working)
--- Load basic options first (no dependencies)
-local options_ok = safe_require("core.options")
-if options_ok then
-  emergency_log("Core options loaded")
+-- 5. Load core modules
+local core_ok, core = init_utils.safe_require("core")
+if not core_ok then
+  init_utils.emergency_log("Failed to load core module!", "ERROR")
+  return
 end
 
--- Load autocmds (minimal dependencies)
-local autocmds_ok = safe_require("core.autocmds")
-if autocmds_ok then
-  emergency_log("Core autocmds loaded")
+-- Initialize core modules
+if not core.setup() then
+  init_utils.emergency_log("Core initialization failed!", "ERROR")
+  return
 end
 
--- Load keymaps (may depend on plugins being available)
-local keymaps_ok = safe_require("core.keymaps")
-if keymaps_ok then
-  emergency_log("Core keymaps loaded")
-end
-
--- 8. LOAD DEBUG SYSTEM LAST (after everything else works)
+-- 6. Load debug system and appearance (after everything else works)
 vim.api.nvim_create_autocmd("User", {
   pattern = "VeryLazy",
   callback = function()
     -- Try to load debug system after everything else is stable
-    local debug_ok = safe_require("core.debug")
+    local debug_ok = init_utils.safe_require("core.debug")
     if debug_ok then
-      emergency_log("Debug system loaded (deferred)")
+      init_utils.emergency_log("Debug system loaded (deferred)")
     else
-      emergency_log("Debug system failed - continuing without it", "WARN")
+      init_utils.emergency_log("Debug system failed - continuing without it", "WARN")
     end
     
     -- Load appearance/themes
-    local appearance_ok = safe_require("core.appearance")
+    local appearance_ok = init_utils.safe_require("core.appearance")
     if appearance_ok then
-      emergency_log("Appearance settings loaded")
+      init_utils.emergency_log("Appearance settings loaded")
     end
   end,
 })
 
--- 9. INSTALL TREESITTER PARSERS ON FIRST RUN
+-- 7. Install treesitter parsers on first run
 vim.api.nvim_create_autocmd("VimEnter", {
   once = true,
   callback = function()
@@ -148,11 +111,11 @@ vim.api.nvim_create_autocmd("VimEnter", {
       -- Check if lua parser exists
       local parser_path = vim.fn.stdpath("data") .. "/lazy/nvim-treesitter/parser/lua.so"
       if not vim.loop.fs_stat(parser_path) then
-        emergency_log("Installing Lua treesitter parser...")
+        init_utils.emergency_log("Installing Lua treesitter parser...")
         vim.cmd("TSInstall lua")
       end
     end)
   end,
 })
 
-emergency_log("Neovim initialization completed")
+init_utils.emergency_log("Neovim initialization completed")

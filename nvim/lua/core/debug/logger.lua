@@ -173,15 +173,55 @@ function M.flush()
   buffer = {}
 end
 
-function M.get_logger(ns)
-  return setmetatable({}, {
-    __index = function(_, level)
-      return function(msg, opts)
-        log(string.upper(tostring(level)), ns, msg, opts)
+-- Enhanced logger with both simple and advanced functionality
+function M.get_logger(logger_name)
+  local name = logger_name or "default"
+  
+  local function format_message(level, message_content)
+    return string.format("[%s] %s: %s", name, level, tostring(message_content))
+  end
+
+  local function log_with_highlight(level, message, hl_group)
+    local formatted_msg = format_message(level, message)
+    vim.schedule(function()
+      vim.api.nvim_echo({{formatted_msg, hl_group or "Normal"}}, true, {})
+    end)
+    return formatted_msg
+  end
+
+  return {
+    info = function(message)
+      return log_with_highlight("INFO", message, "Normal")
+    end,
+    warn = function(message)
+      return log_with_highlight("WARN", message, "WarningMsg")
+    end,
+    error = function(message)
+      return log_with_highlight("ERROR", message, "ErrorMsg")
+    end,
+    debug = function(message)
+      if vim.g.debug_mode then
+        return log_with_highlight("DEBUG", message, "Comment")
+      end
+    end,
+    -- Advanced logging features
+    trace = function(message, context)
+      if vim.g.debug_mode then
+        local ctx_str = context and string.format(" [%s]", vim.inspect(context)) or ""
+        return log_with_highlight("TRACE", message .. ctx_str, "Comment")
+      end
+    end,
+    performance = function(message, start_time)
+      if vim.g.debug_mode and start_time then
+        local elapsed = vim.loop.now() - start_time
+        return log_with_highlight("PERF", string.format("%s (%.2fms)", message, elapsed), "Special")
       end
     end
-  })
+  }
 end
+
+-- Initialize global logger
+M.global = M.get_logger("Neovim")
 
 -- Métodos de conveniência
 function M.debug(ns, msg, opts) log("DEBUG", ns, msg, opts) end
