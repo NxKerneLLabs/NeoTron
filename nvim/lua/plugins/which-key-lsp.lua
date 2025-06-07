@@ -1,10 +1,10 @@
--- ~/.config/nvim/lua/plugins/which-key-config.lua
+-- ~/.config/nvim/lua/plugins/which-key-lsp.lua
 
 local wk = require("which-key")
 
 -- Core setup
 wk.setup({
-  -- Deixe em "auto" para capturar <leader>, g, /, :, etc.
+  -- "auto" captures <leader>, g, /, :, etc.
   triggers    = "auto",
   show_help   = true,
   show_keys   = true,
@@ -13,12 +13,12 @@ wk.setup({
     filetypes = { "TelescopePrompt" },
   },
   key_labels = {
-    ["<leader>"] = "󱁐",  -- ícone para <leader>
+    ["<leader>"] = "󱁐",  -- icon for <leader>
   },
-  -- Exemplo de filter para tree view
+  -- Example filter for tree view
   tree = {
     filter = function(node)
-      -- remove comandos internos que começam com '_'
+      -- remove internal commands starting with '_'
       return not vim.startswith(node.label or "", "_")
     end,
     icons = { file = "", folder_closed = "", folder_open = "" },
@@ -34,12 +34,12 @@ local lspconfig = require("lspconfig")
 mason.setup()
 mason_lspconfig.setup({
   ensure_installed = {
-    "dockerls", "azure_pipelines_ls", "cssls", "denols", 
-    "docker_compose_language_service", "emmet_ls", "eslint", "gopls", 
-    "graphql", "helm_ls", "html", "jsonls", "lua_ls", 
-    "nixfmt", "oelint-adv", "ols", "prismals", "pyright", 
-    "ruff", "rust_analyzer", "tailwindcss", "tflint", 
-    "ts_ls", "solidity_ls", "yamlls"
+    "dockerls", "azure_pipelines_ls", "cssls", "denols",
+    "docker_compose_language_service", "emmet_ls", "eslint", "gopls",
+    "graphql", "helm_ls", "html", "jsonls", "lua_ls",
+    "nixfmt", "oelint-adv", "ols", "prismals", "pyright",
+    "ruff", "rust_analyzer", "tailwindcss", "tflint",
+    "tsserver", "solidity_ls", "yamlls"
   },
 })
 
@@ -61,12 +61,12 @@ local on_attach = function(client, bufnr)
     l = {
       name = "LSP",
       i = { "<cmd>LspInfo<cr>",        "Info" },
-      I = { "<cmd>LspInstallInfo<cr>", "Installer Info" },
-      r = { vim.lsp.buf.rename,         "Rename" },
+      I = { "<cmd>Mason<cr>",          "Installer Info" },
+      r = { vim.lsp.buf.rename,        "Rename" },
       a = { vim.lsp.buf.code_action,   "Code Action" },
-      f = { function() vim.lsp.buf.format { async = true } end, "Format" },
-      d = { vim.diagnostic.open_float,  "Line Diagnostics" },
-      q = { vim.diagnostic.setloclist,  "Quickfix Diagnostics" },
+      f = { function() vim.lsp.buf.format({ async = true }) end, "Format" },
+      d = { vim.diagnostic.open_float, "Line Diagnostics" },
+      q = { vim.diagnostic.setloclist, "Quickfix Diagnostics" },
     },
   }, { prefix = "<leader>" })
 end
@@ -86,14 +86,14 @@ local dap = require("dap")
 wk.register({
   d = {
     name = "Debug",
-    r = { dap.continue,     "Run/Continue" },
-    b = { dap.toggle_breakpoint, "Toggle Breakpoint" },
-    c = { dap.run_to_cursor, "Run to Cursor" },
-    s = { dap.step_over,     "Step Over" },
-    i = { dap.step_into,     "Step Into" },
-    o = { dap.step_out,      "Step Out" },
-    u = { dap.up,            "Up Frame" },
-    d = { dap.down,          "Down Frame" },
-    l = { dap.toggle_repl,   "Toggle REPL" },
+    r = { function() dap.continue() end,           "Run/Continue" },
+    b = { function() dap.toggle_breakpoint() end,  "Toggle Breakpoint" },
+    c = { function() dap.run_to_cursor() end,      "Run to Cursor" },
+    s = { function() dap.step_over() end,          "Step Over" },
+    i = { function() dap.step_into() end,          "Step Into" },
+    o = { function() dap.step_out() end,           "Step Out" },
+    u = { function() dap.up() end,                 "Up Frame" },
+    d = { function() dap.down() end,               "Down Frame" },
+    l = { function() dap.toggle_repl() end,        "Toggle REPL" },
   },
 }, { prefix = "<leader>" })

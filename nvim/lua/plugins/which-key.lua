@@ -2,6 +2,7 @@
 local fallback = require("core.debug.fallback")
 local ok_dbg, dbg = pcall(require, "core.debug.logger")
 local logger = (ok_dbg and dbg.get_logger and dbg.get_logger("plugins.which-key")) or fallback
+
 return {
   "folke/which-key.nvim",
   event = "VeryLazy",
@@ -17,7 +18,6 @@ return {
           suggestions = 20,
         },
       },
-      replace = {
       key_labels = {
         ["<leader>"] = "󱁐",
       },
@@ -26,17 +26,6 @@ return {
         separator = "➜",
         group = "+",
       },
-      keys = {
-        scroll_down = "<c-d>",
-        scroll_up = "<c-u>",
-      },
-      win = {
-        border = "single",
-        no_overlap = true,
-        padding = {1, 0},
-        title = true,
-        title_pos = "center",
-        zindex = 1000,
       popup_mappings = {
         scroll_down = "<c-d>",
         scroll_up = "<c-u>",
@@ -53,14 +42,6 @@ return {
         spacing = 3,
         align = "left",
       },
-      show_help = true,
-      show_keys = true,
-      triggers = { " " }, -- Fixed: Proper table syntax
-      disable = { -- Moved: Correct placement
-        buftypes = {},
-        filetypes = {},
-      },
-    }) -- End wk.setup
       ignore_missing = true,
       hidden = { "<silent>", "<cmd>", "<Cmd>", "<CR>", "call", "lua", "^:", "^ " },
       show_help = true,
@@ -75,6 +56,3 @@ return {
     logger.info("which-key configurado com sucesso.")
   end,
 }
-    logger.info("which-key configurado com sucesso.")
-  end,
-} -- End return plugin spec
