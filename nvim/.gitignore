@@ -1,0 +1,26 @@
+<<<<<<< HEAD
+=======
+# Arquivos temporários e backups
+>>>>>>> ab43c81839a015e2a4d0ee425c51f789842627a2
+*.swp
+*.bak
+*.swo
+
+# Arquivos de log e temporários
+/tmp/*
+*.log
+
+# Arquivos de dados sensíveis
+*.key
+*.token
+*.gpg
+
+# Pastas de plugins ou caches
+.git
+.cache
+undo/
+backup/
+swap/
+
+terraform.tfstate
+terraform.tfstate.backup
